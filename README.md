@@ -72,14 +72,19 @@ from contributors to everyone who uses the software.
 
 ## Releasing
 
+Two scripts do the work (PowerShell, Windows). Settings for your machine go in
+`scripts/local.ps1`; copy `scripts/local.example.ps1`.
+
 1. Bump `version` in `package.json` and add a `## <version>` section to `CHANGELOG.md`.
-2. Commit and push to `main`. The **CI and release** workflow runs the tests (Linux and Windows).
-3. Tag and push: `git tag v<version> && git push origin v<version>`. The same workflow
-   builds the `.vsix` and creates the GitHub Release, using the changelog section as the notes.
-4. Publish to the Marketplace with the manual **Publish to Marketplace** workflow
-   (Actions tab, Run workflow, enter the tag). It needs the repository secret `VSCE_PAT`.
-   Alternatively, from a machine signed in with `az login`:
-   `npx @vscode/vsce publish --azure-credential`.
+2. `scripts\push-to-github.ps1 -Message "summary"` audits the change, opens a pull request,
+   waits for the tests (Linux and Windows) and SonarCloud, and merges only if all are green.
+3. `scripts\release-to-marketplace.ps1` checks that `main` is green, tags `v<version>` (the
+   **CI and release** workflow builds the GitHub Release), then publishes that exact `.vsix`
+   to the Marketplace with your `az login`.
+
+Without the scripts: tag with `git tag v<version> && git push origin v<version>`, then run the
+manual **Publish to Marketplace** workflow (needs the repository secret `VSCE_PAT`) or
+`npx @vscode/vsce publish --azure-credential`.
 
 ## Develop
 
