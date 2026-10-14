@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- New icon: the Hive logo.
+
 ## 0.2.1
 
 - Two accounts that share one email (for example a personal and an organization login) are now kept as separate accounts, told apart by their organization/workspace id. Rows show the organization name next to the email, and the pencil still gives each a short name.
