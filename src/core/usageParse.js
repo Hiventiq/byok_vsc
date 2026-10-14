@@ -1,5 +1,8 @@
 "use strict";
 // Pure: Anthropic's /api/oauth/usage payload -> the four numbers the UI needs.
+// Mirrors the parsing in the Hiventiq byok library (Python): _fetch_claude_usage and
+// _fetch_codex_usage in its cli_providers.py. Codex windows are classified by their length
+// there too (a plan can return only a weekly window). Keep the two in step.
 
 const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const scale = (v) => (typeof v === "number" ? v * 100 : v);

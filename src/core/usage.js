@@ -1,5 +1,6 @@
 "use strict";
 // Pure usage helpers: numbers in, display strings out. No vscode, no I/O.
+// worstUsed mirrors pct_left_from_usage in the Hiventiq byok library's auto_switch.py.
 
 const BAR_WIDTH = 10;
 const CRITICAL_AT = 95;
