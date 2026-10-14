@@ -3,6 +3,21 @@
 Guidance for working in this repo: BYOK for VS Code (Claude Code and Codex account
 switcher). See `README.md` for what it does and how to release.
 
+## Two commands (what the owner says, and what to run)
+
+- **"push to github"**: `powershell -File scripts\push-to-github.ps1 -Message "<one-line summary>"`
+  Audits (clean install without scripts, tests, package, secret scan, changelog check), opens a
+  branch and pull request, waits for both test jobs and SonarCloud, and squash-merges only if
+  everything is green. If anything is red it stops and leaves the PR open. Add
+  `-Trailer "Co-Authored-By: ..."` for the commit trailer.
+- **"release to the marketplace"**: `powershell -File scripts\release-to-marketplace.ps1`
+  Needs a clean, current, green `main` and a version that is not yet tagged or published. Tags
+  `v<version>` (CI builds the GitHub Release), then publishes that exact `.vsix` with `az login`.
+
+Both read machine settings (git dir, token file, personal strings to refuse) from
+`scripts/local.ps1`, which is git-ignored; see `scripts/local.example.ps1`. A release always
+follows a push: bump `version` and add its `CHANGELOG.md` section in the change you push.
+
 ## Rule: Sonar must pass before code lands on `main`
 
 SonarCloud (project `Hiventiq_byok_vsc`, free for this public repo) runs on every push and
