@@ -27,7 +27,9 @@ function withAliases(accounts, aliases) {
 const PROVIDER_ICON = { "claude-code": "$(account)", codex: "$(terminal)" };
 const LOGIN_COMMAND = { "claude-code": "claude login", codex: "codex login" };
 
-function statusText(account, provider = { id: "claude-code", label: "Claude" }) {
+const DEFAULT_PROVIDER = Object.freeze({ id: "claude-code", label: "Claude" });
+
+function statusText(account, provider = DEFAULT_PROVIDER) {
   const icon = PROVIDER_ICON[provider.id] || "$(account)";
   if (!account) return `${icon} ${provider.label}: no login`;
   if (account.needs_reauth) return `$(warning) ${displayName(account)} · sign in again`;
@@ -72,7 +74,7 @@ function rowDescription(account) {
   return parts.filter(Boolean).join(" · ");
 }
 
-function tooltipText(accounts, nowMs, provider = { id: "claude-code", label: "Claude" }) {
+function tooltipText(accounts, nowMs, provider = DEFAULT_PROVIDER) {
   if (!accounts.length) {
     return `No ${provider.label} accounts. Sign in with \`${LOGIN_COMMAND[provider.id]}\`, then save it.`;
   }

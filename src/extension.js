@@ -88,6 +88,9 @@ function activate(context) {
       await Promise.all(runtimes.map((r) => listOne(r, force, prefValues)));
       render();
       await maybeAutoSwitch();
+    } catch (err) {
+      // Never let a background refresh reject: show the problem on the status bar instead.
+      for (const r of runtimes) r.statusBar.renderError(err.message);
     } finally {
       state.busy = false;
       scheduleRetry();
@@ -98,7 +101,7 @@ function activate(context) {
   function scheduleRetry() {
     clearTimeout(state.retryTimer);
     const waits = runtimes.map((r) => r.service.nextRetryInMs()).filter((ms) => ms !== null);
-    if (waits.length) state.retryTimer = setTimeout(() => refresh(), Math.min(...waits) + 1000);
+    if (waits.length) state.retryTimer = setTimeout(() => { void refresh(); }, Math.min(...waits) + 1000);
   }
 
   async function doSwitch(runtime, id, label) {
@@ -196,7 +199,7 @@ function activate(context) {
     await refresh();
   }
 
-  const timer = setInterval(() => refresh(), Math.max(60, settings().get("pollSeconds")) * 1000);
+  const timer = setInterval(() => { void refresh(); }, Math.max(60, settings().get("pollSeconds")) * 1000);
   context.subscriptions.push(
     ...runtimes.map((r) => r.statusBar.item),
     { dispose: () => { clearInterval(timer); clearTimeout(state.retryTimer); } },
@@ -209,10 +212,10 @@ function activate(context) {
     vscode.commands.registerCommand("hiventiqByok.moveUp", (node) => moveCommand(node, -1)),
     vscode.commands.registerCommand("hiventiqByok.moveDown", (node) => moveCommand(node, 1)),
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration("hiventiqByok")) refresh();
+      if (e.affectsConfiguration("hiventiqByok")) void refresh();
     }),
   );
-  refresh();
+  void refresh();
 }
 
 function deactivate() {}
