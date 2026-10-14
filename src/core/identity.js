@@ -1,5 +1,7 @@
 "use strict";
 // Pure: the CLI's identity block and OAuth credential shape. Dicts in, dicts out.
+// Mirrors the Hiventiq byok library (Python): cli_identity.py (snapshot, match, patch) and the
+// Claude parts of cli_providers.py (credential shape, token refresh). Keep the two in step.
 
 const OAUTH_KEY = "oauthAccount";
 const EMAIL_KEY = "emailAddress";

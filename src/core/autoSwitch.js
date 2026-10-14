@@ -1,5 +1,6 @@
 "use strict";
 // Pure auto-switch decision: which account (if any) to move to right now.
+// The same idea as the Hiventiq byok library's auto_switch.py (threshold, cooldown, best candidate).
 const { worstUsed, isNum } = require("./usage");
 
 function inCooldown(lastSwitchAt, nowMs, cooldownMs) {

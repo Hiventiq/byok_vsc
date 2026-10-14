@@ -1,5 +1,7 @@
 "use strict";
 // Pure: the Codex CLI's ~/.codex/auth.json shape. Dicts in, values out.
+// Mirrors the Hiventiq byok library (Python): _codex_identity and _codex_account_id in its
+// cli_providers.py. Keep the two in step.
 const { decodeJwtPayload } = require("./jwt");
 const { normalizeEmail } = require("./identity");
 
