@@ -14,14 +14,21 @@ function orderAccounts(accounts, order) {
     .map((x) => x.account);
 }
 
+// A copy of the list with the entries at positions a and b swapped.
+function swapped(list, a, b) {
+  return list.map((value, i) => {
+    if (i === a) return list[b];
+    return i === b ? list[a] : value;
+  });
+}
+
 // The email list with one entry moved up (-1) or down (+1); unchanged at either end.
 function moveEmail(emails, email, delta) {
   const list = emails.map(norm);
   const from = list.indexOf(norm(email));
   const to = from + delta;
-  if (from === -1 || to < 0 || to >= list.length) return list;
-  [list[from], list[to]] = [list[to], list[from]];
-  return list;
+  const movable = from !== -1 && to >= 0 && to < list.length;
+  return movable ? swapped(list, from, to) : list;
 }
 
 // The names map with one name set; a blank name removes it.

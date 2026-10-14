@@ -3,6 +3,7 @@
 ## 0.2.2
 
 - New icon: the Hive logo.
+- Internal: fixes from code analysis (CI installs with `--ignore-scripts`, background refreshes can no longer reject, small clean-ups). No behavior change.
 
 ## 0.2.1
 
