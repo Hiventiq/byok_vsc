@@ -70,6 +70,17 @@ Issues and questions: https://github.com/Hiventiq/byok_vsc/issues
 Apache License 2.0 (see `LICENSE` and `NOTICE`). It includes an express patent grant
 from contributors to everyone who uses the software.
 
+## Releasing
+
+1. Bump `version` in `package.json` and add a `## <version>` section to `CHANGELOG.md`.
+2. Commit and push to `main`. The **CI and release** workflow runs the tests (Linux and Windows).
+3. Tag and push: `git tag v<version> && git push origin v<version>`. The same workflow
+   builds the `.vsix` and creates the GitHub Release, using the changelog section as the notes.
+4. Publish to the Marketplace with the manual **Publish to Marketplace** workflow
+   (Actions tab, Run workflow, enter the tag). It needs the repository secret `VSCE_PAT`.
+   Alternatively, from a machine signed in with `az login`:
+   `npx @vscode/vsce publish --azure-credential`.
+
 ## Develop
 
     npm install

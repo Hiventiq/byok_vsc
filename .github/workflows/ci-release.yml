@@ -1,0 +1,80 @@
+name: CI and release
+
+# Every push and pull request runs the tests. Pushing a version tag (for example v0.2.2)
+# also builds the .vsix and creates a GitHub Release with it attached.
+# Publishing to the Marketplace is a separate, manual workflow (publish-marketplace.yml).
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  release:
+    name: Build and create GitHub Release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Tag must match package.json version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${version}"
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Build the .vsix
+        run: npm run package
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="${VERSION}" '
+            $0 == "## " v { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no '## ${VERSION}' section"
+            exit 1
+          fi
+
+      - name: Create the Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "hiventiq-byok-${VERSION}.vsix" \
+            --title "BYOK ${VERSION}" \
+            --notes-file release-notes.md

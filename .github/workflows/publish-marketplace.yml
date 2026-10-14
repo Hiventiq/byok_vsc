@@ -1,0 +1,53 @@
+name: Publish to Marketplace
+
+# Manual only: Actions tab > "Publish to Marketplace" > Run workflow, and give the release tag.
+# It publishes the exact .vsix attached to that GitHub Release, so what ships is what was released.
+# Needs one repository secret: VSCE_PAT, an Azure DevOps Personal Access Token with the
+# Marketplace > Manage scope for the "hiventiq" publisher.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (for example v0.2.2)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the VSCE_PAT secret exists
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "${VSCE_PAT}" ]; then
+            echo "::error::Repository secret VSCE_PAT is not set. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Download the .vsix from the Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release download "${TAG}" --repo "${GITHUB_REPOSITORY}" --pattern "*.vsix"
+
+      - name: Publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -e
+          files=(*.vsix)
+          if [ "${#files[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one .vsix, found ${#files[@]}"
+            exit 1
+          fi
+          npx --yes @vscode/vsce@3.9.2 publish --packagePath "${files[0]}"
