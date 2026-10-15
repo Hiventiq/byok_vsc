@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Codex usage: when both rate-limit windows fall in the same length class (both short or both long), both are now kept instead of the second overwriting the first. Same fix as the byok library's `usage_windows.py`.
 - Internal: the HTTP clients share their result shapes (`src/core/httpResult.js`), removing duplicated code; comments now point to the matching code in the Hiventiq byok library so the two are kept in step. No behavior change.
 
 ## 0.2.2

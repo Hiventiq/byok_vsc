@@ -156,3 +156,17 @@ test("parseCodexUsage classifies windows by length, so a weekly-only plan is not
   const both = parseCodexUsage({ rate_limit: { primary_window: { used_percent: 5, limit_window_seconds: 18000 }, secondary_window: { used_percent: 9, limit_window_seconds: 604800 } } });
   assert.deepStrictEqual([both.session_pct, both.weekly_pct], [5, 9]);
 });
+
+test("parseCodexUsage keeps both windows when they fall in one length class", () => {
+  const short = { used_percent: 10, limit_window_seconds: 18000, reset_at: 1_700_000_100 };
+  const shorter = { used_percent: 20, limit_window_seconds: 3600, reset_at: 1_700_000_200 };
+  const both = parseCodexUsage({ rate_limit: { primary_window: short, secondary_window: shorter } });
+  assert.strictEqual(both.session_pct, 10);
+  assert.strictEqual(both.weekly_pct, 20);
+
+  const long1 = { used_percent: 30, limit_window_seconds: 604800, reset_at: 1_700_000_300 };
+  const long2 = { used_percent: 40, limit_window_seconds: 1209600, reset_at: 1_700_000_400 };
+  const longs = parseCodexUsage({ rate_limit: { primary_window: long1, secondary_window: long2 } });
+  assert.strictEqual(longs.weekly_pct, 30);
+  assert.strictEqual(longs.session_pct, 40);
+});
