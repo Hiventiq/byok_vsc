@@ -43,9 +43,13 @@ function windowKind(window, position) {
 function parseCodexUsage(payload) {
   const limit = (payload && payload.rate_limit) || {};
   const out = { session_pct: null, session_resets_at: null, weekly_pct: null, weekly_resets_at: null };
+  const taken = new Set();
   [limit.primary_window, limit.secondary_window].forEach((window, position) => {
     if (!window || typeof window !== "object") return;
-    const kind = windowKind(window, position);
+    let kind = windowKind(window, position);
+    // Two windows of one length class: keep both, the second takes the other kind (as byok's usage_windows.py).
+    if (taken.has(kind)) kind = kind === "session" ? "weekly" : "session";
+    taken.add(kind);
     out[`${kind}_pct`] = num(window.used_percent);
     out[`${kind}_resets_at`] = isoFromUnix(window.reset_at);
   });
