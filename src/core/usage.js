@@ -19,9 +19,9 @@ function level(used, warnAt) {
 }
 
 function bar(pct, width = BAR_WIDTH) {
-  if (!isNum(pct)) return "░".repeat(width);
+  if (!isNum(pct)) return "▱".repeat(width);
   const filled = Math.round((Math.min(100, Math.max(0, pct)) / 100) * width);
-  return "█".repeat(filled) + "░".repeat(width - filled);
+  return "▰".repeat(filled) + "▱".repeat(width - filled);
 }
 
 function pctText(pct) {

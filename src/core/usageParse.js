@@ -21,7 +21,18 @@ function parseUsage(payload) {
     session_resets_at: five.resets_at ?? null,
     weekly_pct: num(week.utilization),
     weekly_resets_at: week.resets_at ?? null,
+    ...scopedWeekly(body.limits, "Fable"),
   };
+}
+
+// Plans with access to a model carry its own weekly allowance in `limits` as a weekly_scoped entry.
+// No entry means no access: both fields stay null and the UI shows no bar.
+function scopedWeekly(limits, model) {
+  const entry = (Array.isArray(limits) ? limits : []).find(
+    (l) => l && l.kind === "weekly_scoped" && l.scope && l.scope.model && l.scope.model.display_name === model,
+  );
+  const key = model.toLowerCase();
+  return { [`${key}_pct`]: entry ? num(entry.percent) : null, [`${key}_resets_at`]: entry ? entry.resets_at ?? null : null };
 }
 
 function isoFromUnix(seconds) {
