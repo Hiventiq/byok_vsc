@@ -10,6 +10,9 @@ const accountsSetting = require("./core/accountsSetting");
 const prefsCore = require("./core/prefs");
 const { createPrefsStore } = require("./data/prefsStore");
 const { AccountsTree } = require("./ui/accountsTree");
+const { AccountsPanel } = require("./ui/accountsPanel");
+const { AccountDecorations } = require("./ui/accountDecorations");
+const styles = require("./core/styles");
 const { createStatusBar } = require("./ui/statusBar");
 
 const settings = () => vscode.workspace.getConfiguration("hiventiqByok");
@@ -31,7 +34,7 @@ function pickItems(accounts) {
   const several = new Set(accounts.map((a) => a.provider)).size > 1;
   return accounts.filter((a) => a.stored !== false).map((a) => ({
     label: `${a.active ? "$(check) " : ""}${labels.displayName(a)}`,
-    description: [several ? a.providerLabel : "", a.name ? a.email : "", a.subscription].filter(Boolean).join(" · "),
+    description: [several ? a.providerLabel : "", a.subscription].filter(Boolean).join(" · "),
     account: a,
   }));
 }
@@ -52,7 +55,9 @@ function activate(context) {
   }));
   const runtimeFor = (providerId) => runtimes.find((r) => r.provider.id === providerId);
 
-  const tree = new AccountsTree();
+  const decorations = new AccountDecorations();
+  const tree = new AccountsTree(decorations);
+  const panel = new AccountsPanel();
   const prefs = createPrefsStore(context.globalState);
   const state = { busy: false, lastAutoSwitchAt: {} };
   importLegacySetting(prefs);
@@ -77,7 +82,25 @@ function activate(context) {
       if (r.error) r.statusBar.renderError(r.error);
       else r.statusBar.render(r.accounts, warnAt);
     }
-    tree.update(runtimes.map((r) => ({ provider: r.provider, accounts: r.accounts, alwaysShow: r.alwaysShow })), warnAt);
+    const groups = runtimes.map((r) => ({ provider: r.provider, accounts: r.accounts, alwaysShow: r.alwaysShow }));
+    tree.update(groups, warnAt, displaySettings());
+    panel.update(groups, warnAt);
+    decorations.update(groups, warnAt);
+  }
+
+  const displaySettings = () => ({
+    usageStyle: settings().get("usageStyle"), richTooltip: settings().get("richTooltip"), labelBadges: settings().get("labelBadges"),
+  });
+
+  async function chooseStyleCommand() {
+    const cfg = settings();
+    const current = styles.currentPreset({ view: cfg.get("view"), ...displaySettings() });
+    const picked = await vscode.window.showQuickPick(
+      styles.PRESETS.map((p) => ({ label: `${p === current ? "$(check) " : ""}${p.label}`, description: p.detail, preset: p })),
+      { title: "How should usage be shown?" },
+    );
+    if (!picked) return;
+    for (const [key, value] of Object.entries(picked.preset.values)) await cfg.update(key, value, vscode.ConfigurationTarget.Global);
   }
 
   async function refresh(force = false) {
@@ -204,6 +227,9 @@ function activate(context) {
     ...runtimes.map((r) => r.statusBar.item),
     { dispose: () => { clearInterval(timer); clearTimeout(state.retryTimer); } },
     vscode.window.registerTreeDataProvider("hiventiqByok.accounts", tree),
+    vscode.window.registerWebviewViewProvider("hiventiqByok.panel", panel),
+    vscode.window.registerFileDecorationProvider(decorations),
+    vscode.commands.registerCommand("hiventiqByok.chooseStyle", chooseStyleCommand),
     vscode.commands.registerCommand("hiventiqByok.switch", switchCommand),
     vscode.commands.registerCommand("hiventiqByok.saveCurrent", saveCommand),
     vscode.commands.registerCommand("hiventiqByok.refresh", () => refresh(true)),

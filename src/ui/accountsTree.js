@@ -3,11 +3,18 @@
 // each with its usage bars as child rows.
 const vscode = require("vscode");
 const labels = require("../core/labels");
+const { level } = require("../core/usage");
+const { ringSvg, dataUri } = require("../core/svg");
+const { tooltipMarkdown } = require("../core/richViews");
 
+const USAGE_COLOR = { ok: "charts.green", warn: "charts.yellow", critical: "charts.red", unknown: "disabledForeground" };
 const ICON = { ok: "pass", warn: "warning", critical: "error", unknown: "circle-outline" };
 
 class AccountsTree {
-  constructor() {
+  // decorations: AccountDecorations, used for the optional percent badge.
+  constructor(decorations) {
+    this.decorations = decorations;
+    this.display = { usageStyle: "bars", richTooltip: true, labelBadges: false };
     this.groups = [];
     this.warnAt = 80;
     this.nowMs = Date.now();
@@ -16,7 +23,8 @@ class AccountsTree {
   }
 
   // groups: [{ provider: { id, label }, accounts, alwaysShow }]
-  update(groups, warnAt) {
+  update(groups, warnAt, display) {
+    this.display = display;
     this.groups = groups;
     this.warnAt = warnAt;
     this.nowMs = Date.now();
@@ -53,8 +61,23 @@ class AccountsTree {
     item.contextValue = account.stored === false ? "unsaved" : "account";
     item.iconPath = new vscode.ThemeIcon(ICON[labels.severity(account, this.warnAt)]);
     item.command = account.active ? undefined : { command: "hiventiqByok.switch", title: "Switch", arguments: [{ account }] };
-    const children = labels.usageLines(account, this.nowMs).map((line) => ({ item: new vscode.TreeItem(line) }));
+    if (this.display.labelBadges) item.resourceUri = this.decorations.uriFor(account);
+    if (this.display.richTooltip) item.tooltip = new vscode.MarkdownString(tooltipMarkdown(account, this.nowMs, this.warnAt));
+    const rings = this.display.usageStyle === "rings";
+    const rows = labels.usageRows(account, this.nowMs, { withBar: !rings });
+    const children = rows.map((row) => ({ item: this._usageItem(row, rings) }));
     return { item, account, children };
+  }
+
+  // Each usage row leads with a ring that fills to the percent, or a coloured dot (green, amber, red).
+  _usageItem(row, rings) {
+    const item = new vscode.TreeItem(row.text);
+    if (row.pct == null) return item;
+    const lvl = level(row.pct, this.warnAt);
+    item.iconPath = rings
+      ? vscode.Uri.parse(dataUri(ringSvg(row.pct, lvl)))
+      : new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor(USAGE_COLOR[lvl]));
+    return item;
   }
 }
 

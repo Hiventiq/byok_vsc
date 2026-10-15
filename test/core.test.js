@@ -7,9 +7,9 @@ const identity = require("../src/core/identity");
 const { decideSwitch } = require("../src/core/autoSwitch");
 
 test("bar and pctText", () => {
-  assert.strictEqual(usage.bar(50), "█████░░░░░");
-  assert.strictEqual(usage.bar(null), "░░░░░░░░░░");
-  assert.strictEqual(usage.bar(250), "██████████");
+  assert.strictEqual(usage.bar(50), "▰▰▰▰▰▱▱▱▱▱");
+  assert.strictEqual(usage.bar(null), "▱▱▱▱▱▱▱▱▱▱");
+  assert.strictEqual(usage.bar(250), "▰▰▰▰▰▰▰▰▰▰");
   assert.strictEqual(usage.pctText(41.6), "42%");
   assert.strictEqual(usage.pctText(undefined), "?");
 });

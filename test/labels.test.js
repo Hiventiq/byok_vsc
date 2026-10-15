@@ -14,7 +14,7 @@ test("statusText", () => {
 test("usageLines show bars and reset countdown", () => {
   const now = Date.parse("2026-10-14T00:00:00Z");
   const lines = labels.usageLines({ ...a, session_resets_at: "2026-10-14T01:30:00Z" }, now);
-  assert.match(lines[0], /█+░+\s+42%\s+resets in 1h 30m/);
+  assert.match(lines[0], /▰+▱+\s+42%\s+resets in 1h 30m/);
   assert.match(lines[1], /18%/);
 });
 
@@ -36,15 +36,15 @@ test("tooltipText lists every account", () => {
   assert.match(text, / {2}b@x.com/);
 });
 
-test("aliases: matched case-insensitively, blanks ignored, email still shown beside the alias", () => {
+test("aliases: matched case-insensitively, blanks ignored, the alias replaces the email", () => {
   const accounts = [{ ...a, email: "A@X.com" }, { ...a, id: "b", email: "b@x.com", active: false }];
   const named = labels.withAliases(accounts, { "a@x.com": " Work ", "b@x.com": "  ", bad: 5 });
   assert.deepStrictEqual(named.map((n) => n.name), ["Work", ""]);
   assert.strictEqual(labels.displayName(named[0]), "Work");
   assert.strictEqual(labels.displayName(named[1]), "b@x.com");
   assert.match(labels.statusText(named[0]), /^\$\(account\) Work · 5h/);
-  assert.match(labels.rowDescription(named[0]), /A@X.com/);
-  assert.match(labels.tooltipText(named, 0), /● Work \(A@X.com\)/);
+  assert.doesNotMatch(labels.rowDescription(named[0]), /A@X.com/);
+  assert.match(labels.tooltipText(named, 0), /● Work\n/);
   assert.deepStrictEqual(labels.withAliases(accounts, undefined).map((n) => n.name), ["", ""]);
 });
 

@@ -45,23 +45,42 @@ function windowSummary(account) {
     .filter(Boolean).join(" · ");
 }
 
-function windowLine(name, pct, resetsAt, nowMs) {
-  const reset = countdown(resetsAt, nowMs);
-  return `${name}  ${bar(pct)}  ${pctText(pct)}${reset ? `  resets in ${reset}` : ""}`;
+// The usage windows an account has, in display order. `fable` is the Claude Fable weekly allowance
+// and appears only for plans that have it (see usageParse.scopedWeekly).
+const WINDOWS = [
+  { key: "session", short: "5h  ", label: "5-hour window" },
+  { key: "weekly", short: "week", label: "Weekly window" },
+  { key: "fable", short: "fable", label: "Fable weekly" },
+];
+
+function usageWindows(account) {
+  if (account.needs_reauth) return [];
+  return WINDOWS
+    .filter((w) => account[`${w.key}_pct`] != null)
+    .map((w) => ({ ...w, pct: account[`${w.key}_pct`], resetsAt: account[`${w.key}_resets_at`] }));
+}
+
+function windowLine(w, nowMs, withBar) {
+  const reset = countdown(w.resetsAt, nowMs);
+  return `${w.short}  ${withBar ? `${bar(w.pct)}  ` : ""}${pctText(w.pct)}${reset ? `  resets in ${reset}` : ""}`;
+}
+
+// Rows for the sidebar: the text plus the used percent (null for a note), so the view can colour it.
+// withBar:false drops the text bar when a ring icon already draws it.
+function usageRows(account, nowMs, { withBar = true } = {}) {
+  if (account.needs_reauth) {
+    return [{ text: `Needs sign-in: run \`${LOGIN_COMMAND[account.provider] || "claude login"}\`, then Save Current Login`, pct: null }];
+  }
+  const windows = usageWindows(account);
+  if (!windows.length) {
+    return [{ text: `Usage unavailable${account.usage_error ? ` (${account.usage_error})` : ""}`, pct: null }];
+  }
+  const rows = windows.map((w) => ({ text: windowLine(w, nowMs, withBar), pct: w.pct }));
+  return account.stale_at ? [...rows, { text: staleNote(account.stale_at, nowMs), pct: null }] : rows;
 }
 
 function usageLines(account, nowMs) {
-  if (account.needs_reauth) {
-    return [`Needs sign-in: run \`${LOGIN_COMMAND[account.provider] || "claude login"}\`, then Save Current Login`];
-  }
-  if (account.session_pct == null && account.weekly_pct == null) {
-    return [`Usage unavailable${account.usage_error ? ` (${account.usage_error})` : ""}`];
-  }
-  const lines = [
-    account.session_pct != null && windowLine("5h  ", account.session_pct, account.session_resets_at, nowMs),
-    account.weekly_pct != null && windowLine("week", account.weekly_pct, account.weekly_resets_at, nowMs),
-  ].filter(Boolean);
-  return account.stale_at ? [...lines, staleNote(account.stale_at, nowMs)] : lines;
+  return usageRows(account, nowMs).map((r) => r.text);
 }
 
 function staleNote(staleAt, nowMs) {
@@ -69,8 +88,8 @@ function staleNote(staleAt, nowMs) {
 }
 
 function rowDescription(account) {
-  const aliasedEmail = account.name ? account.email : "";
-  const parts = [account.active ? "● active" : "", aliasedEmail, account.subscription, account.stored === false ? "not saved" : ""];
+  // With an alias the label is the alias and the email stays out of the row; without one the label is the email.
+  const parts = [account.active ? "● active" : "", account.subscription, account.stored === false ? "not saved" : ""];
   return parts.filter(Boolean).join(" · ");
 }
 
@@ -79,7 +98,7 @@ function tooltipText(accounts, nowMs, provider = DEFAULT_PROVIDER) {
     return `No ${provider.label} accounts. Sign in with \`${LOGIN_COMMAND[provider.id]}\`, then save it.`;
   }
   const rows = accounts.map((a) => [
-    `${a.active ? "● " : "  "}${displayName(a)}${a.name ? ` (${a.email})` : ""}`,
+    `${a.active ? "● " : "  "}${displayName(a)}`,
     ...usageLines(a, nowMs).map((l) => `    ${l}`),
   ].join("\n"));
   return [`${provider.label}`, ...rows].join("\n\n");
@@ -89,4 +108,4 @@ function severity(account, warnAt) {
   return account ? (account.needs_reauth ? "critical" : level(worstUsed(account), warnAt)) : "unknown";
 }
 
-module.exports = { activeOf, displayName, withAliases, statusText, usageLines, rowDescription, tooltipText, severity };
+module.exports = { activeOf, displayName, withAliases, statusText, usageWindows, usageRows, usageLines, staleNote, rowDescription, tooltipText, severity };

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.0
+
+- Choose how usage looks: the new "Choose Display Style" button (paint icon in the Claude Accounts title bar) offers Bars (default), Rings, Rings + badges, and a graphical Panel with gradient bars. The settings behind it are `hiventiqByok.view`, `usageStyle`, `richTooltip` and `labelBadges`.
+- Hovering an account shows a picture of its usage windows (Markdown tooltip with an SVG).
+- Bars are now rounded segments (`▰▱`) with a green, amber or red dot, instead of grey blocks.
+- Claude accounts whose plan includes Fable show a Fable weekly bar; accounts without it show none.
+- When an account has a short name, its email is no longer shown beside it.
 - Codex usage: when both rate-limit windows fall in the same length class (both short or both long), both are now kept instead of the second overwriting the first. Same fix as the byok library's `usage_windows.py`.
 - Internal: the HTTP clients share their result shapes (`src/core/httpResult.js`), removing duplicated code; comments now point to the matching code in the Hiventiq byok library so the two are kept in step. No behavior change.
 

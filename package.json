@@ -2,19 +2,42 @@
   "name": "hiventiq-byok",
   "displayName": "BYOK",
   "description": "Switch between your Claude Code and Codex accounts from the status bar: live usage bars, auto-switch at a threshold, no service to run. Unofficial.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "hiventiq",
   "license": "Apache-2.0",
-  "repository": { "type": "git", "url": "https://github.com/Hiventiq/byok_vsc.git" },
-  "bugs": { "url": "https://github.com/Hiventiq/byok_vsc/issues" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hiventiq/byok_vsc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hiventiq/byok_vsc/issues"
+  },
   "homepage": "https://github.com/Hiventiq/byok_vsc#readme",
   "icon": "icon.png",
-  "categories": ["Other"],
-  "keywords": ["claude", "claude code", "codex", "openai", "accounts", "switcher", "usage", "byok"],
-  "galleryBanner": { "color": "#0d0d0d", "theme": "dark" },
-  "engines": { "vscode": "^1.85.0" },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "codex",
+    "openai",
+    "accounts",
+    "switcher",
+    "usage",
+    "byok"
+  ],
+  "galleryBanner": {
+    "color": "#0d0d0d",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "build": "esbuild src/extension.js --bundle --minify --platform=node --target=node18 --external:vscode --outfile=dist/extension.js",
@@ -26,38 +49,137 @@
   },
   "contributes": {
     "views": {
-      "explorer": [{ "id": "hiventiqByok.accounts", "name": "Claude Accounts" }]
+      "explorer": [
+        {
+          "id": "hiventiqByok.accounts",
+          "name": "Claude Accounts",
+          "when": "config.hiventiqByok.view != panel"
+        },
+        {
+          "id": "hiventiqByok.panel",
+          "name": "Claude Accounts",
+          "type": "webview",
+          "when": "config.hiventiqByok.view == panel"
+        }
+      ]
     },
     "commands": [
-      { "command": "hiventiqByok.switch", "title": "Claude Accounts: Switch Account", "icon": "$(arrow-swap)" },
-      { "command": "hiventiqByok.saveCurrent", "title": "Claude Accounts: Save Current Login", "icon": "$(add)" },
-      { "command": "hiventiqByok.refresh", "title": "Claude Accounts: Refresh Usage", "icon": "$(refresh)" },
-      { "command": "hiventiqByok.remove", "title": "Claude Accounts: Remove Account", "icon": "$(trash)" },
-      { "command": "hiventiqByok.rename", "title": "Claude Accounts: Rename (short name)", "icon": "$(edit)" },
-      { "command": "hiventiqByok.moveUp", "title": "Claude Accounts: Move Up (try earlier)", "icon": "$(arrow-up)" },
-      { "command": "hiventiqByok.moveDown", "title": "Claude Accounts: Move Down (try later)", "icon": "$(arrow-down)" }
+      {
+        "command": "hiventiqByok.switch",
+        "title": "Claude Accounts: Switch Account",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "hiventiqByok.saveCurrent",
+        "title": "Claude Accounts: Save Current Login",
+        "icon": "$(add)"
+      },
+      {
+        "command": "hiventiqByok.refresh",
+        "title": "Claude Accounts: Refresh Usage",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hiventiqByok.remove",
+        "title": "Claude Accounts: Remove Account",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "hiventiqByok.rename",
+        "title": "Claude Accounts: Rename (short name)",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "hiventiqByok.moveUp",
+        "title": "Claude Accounts: Move Up (try earlier)",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "hiventiqByok.moveDown",
+        "title": "Claude Accounts: Move Down (try later)",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "hiventiqByok.chooseStyle",
+        "title": "Claude Accounts: Choose Display Style",
+        "icon": "$(symbol-color)"
+      }
     ],
     "menus": {
       "view/title": [
-        { "command": "hiventiqByok.saveCurrent", "when": "view == hiventiqByok.accounts", "group": "navigation@1" },
-        { "command": "hiventiqByok.refresh", "when": "view == hiventiqByok.accounts", "group": "navigation@2" }
+        {
+          "command": "hiventiqByok.saveCurrent",
+          "when": "view == hiventiqByok.accounts || view == hiventiqByok.panel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hiventiqByok.refresh",
+          "when": "view == hiventiqByok.accounts || view == hiventiqByok.panel",
+          "group": "navigation@2"
+        },
+        {
+          "command": "hiventiqByok.chooseStyle",
+          "when": "view == hiventiqByok.accounts || view == hiventiqByok.panel",
+          "group": "navigation@3"
+        }
       ],
       "view/item/context": [
-        { "command": "hiventiqByok.rename", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "inline@1" },
-        { "command": "hiventiqByok.moveUp", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "inline@2" },
-        { "command": "hiventiqByok.moveDown", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "inline@3" },
-        { "command": "hiventiqByok.remove", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "inline@4" },
-        { "command": "hiventiqByok.switch", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "1_account@1" },
-        { "command": "hiventiqByok.rename", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "2_edit@1" },
-        { "command": "hiventiqByok.moveUp", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "2_edit@2" },
-        { "command": "hiventiqByok.moveDown", "when": "view == hiventiqByok.accounts && viewItem == account", "group": "2_edit@3" }
+        {
+          "command": "hiventiqByok.rename",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "inline@1"
+        },
+        {
+          "command": "hiventiqByok.moveUp",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "inline@2"
+        },
+        {
+          "command": "hiventiqByok.moveDown",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "inline@3"
+        },
+        {
+          "command": "hiventiqByok.remove",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "inline@4"
+        },
+        {
+          "command": "hiventiqByok.switch",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "1_account@1"
+        },
+        {
+          "command": "hiventiqByok.rename",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "hiventiqByok.moveUp",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "hiventiqByok.moveDown",
+          "when": "view == hiventiqByok.accounts && viewItem == account",
+          "group": "2_edit@3"
+        }
       ]
     },
     "configuration": {
       "title": "Hiventiq Claude Accounts",
       "properties": {
-        "hiventiqByok.pollSeconds": { "type": "number", "default": 120, "minimum": 60, "description": "How often usage is re-read (Anthropic rate-limits this endpoint)." },
-        "hiventiqByok.warnAtPercent": { "type": "number", "default": 80, "description": "Tint the status bar when session or weekly usage reaches this percent." },
+        "hiventiqByok.pollSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 60,
+          "description": "How often usage is re-read (Anthropic rate-limits this endpoint)."
+        },
+        "hiventiqByok.warnAtPercent": {
+          "type": "number",
+          "default": 80,
+          "description": "Tint the status bar when session or weekly usage reaches this percent."
+        },
         "hiventiqByok.accounts": {
           "type": "array",
           "default": [],
@@ -65,16 +187,64 @@
           "deprecationMessage": "Use the pencil and arrow icons in the Claude Accounts sidebar instead.",
           "items": {
             "type": "object",
-            "required": ["email"],
+            "required": [
+              "email"
+            ],
             "properties": {
-              "email": { "type": "string", "description": "The account's email address." },
-              "name": { "type": "string", "description": "Short display name (optional)." }
+              "email": {
+                "type": "string",
+                "description": "The account's email address."
+              },
+              "name": {
+                "type": "string",
+                "description": "Short display name (optional)."
+              }
             }
           }
         },
-        "hiventiqByok.autoSwitch.enabled": { "type": "boolean", "default": false, "description": "Switch to another saved account when the active one reaches the threshold." },
-        "hiventiqByok.autoSwitch.thresholdPercent": { "type": "number", "default": 90, "description": "Usage percent (worst of 5h and weekly) that triggers an auto-switch." },
-        "hiventiqByok.autoSwitch.cooldownMinutes": { "type": "number", "default": 30, "description": "Minimum minutes between auto-switches." }
+        "hiventiqByok.autoSwitch.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Switch to another saved account when the active one reaches the threshold."
+        },
+        "hiventiqByok.autoSwitch.thresholdPercent": {
+          "type": "number",
+          "default": 90,
+          "description": "Usage percent (worst of 5h and weekly) that triggers an auto-switch."
+        },
+        "hiventiqByok.autoSwitch.cooldownMinutes": {
+          "type": "number",
+          "default": 30,
+          "description": "Minimum minutes between auto-switches."
+        },
+        "hiventiqByok.view": {
+          "type": "string",
+          "enum": [
+            "tree",
+            "panel"
+          ],
+          "default": "tree",
+          "description": "tree: the native account list. panel: graphical cards with gradient bars. Easiest to change with the Choose Display Style button."
+        },
+        "hiventiqByok.usageStyle": {
+          "type": "string",
+          "enum": [
+            "bars",
+            "rings"
+          ],
+          "default": "bars",
+          "description": "Tree only. bars: text bars and a coloured dot. rings: a ring icon that fills to the percent."
+        },
+        "hiventiqByok.richTooltip": {
+          "type": "boolean",
+          "default": true,
+          "description": "Tree only. Hovering an account shows a picture of its usage windows."
+        },
+        "hiventiqByok.labelBadges": {
+          "type": "boolean",
+          "default": false,
+          "description": "Tree only. Show a coloured percent badge beside each account."
+        }
       }
     }
   }
