@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `push-to-github.ps1` now refuses a change that leaves `README.md` untouched unless
+  `-ReadmeUnchanged "<why>"` attests the README was reviewed and needs nothing (hive
+  REQ-ROOT-DOC-001). The release script passes the attestation itself, since it runs on a
+  clean `main` the push already gated. README: the Releasing steps say so.
+
 ## 0.4.0
 
 - Saved logins are shared with the Hiventiq byok library on the same machine (byok REQ-BYOK-SHR-001). Both tools keep every saved Claude and Codex login in one per-user folder (`%LOCALAPPDATA%\Hiventiq\byok\accounts`, owner-only; `~/.local/share/hiventiq/byok/accounts` elsewhere), so each shows every account, and only one of them refreshes a token at a time: this extension while VS Code is open (it writes a heartbeat on every poll), byok when it is not. A login saved or refreshed in one appears in the other without a new sign-in; removing a login in one removes it in the other. The usage reading is shared the same way: whichever tool fetched last writes it to the login's file, and the other shows it instead of calling (the usage endpoint rate-limits per access token, which both now share), so the sidebar no longer shows `HTTP 429` for an account byok just read. Settings: `hiventiqByok.shareWithByok` (default on) and `hiventiqByok.sharedAccountsDir`. Fixes the "Needs sign-in (HTTP 400)" rows that appeared when byok had refreshed the same login.

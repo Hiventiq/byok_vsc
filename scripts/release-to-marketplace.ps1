@@ -72,7 +72,8 @@ try {
   $version = Get-PackageVersion
   $tag = "v$version"
   Assert-ReadyToRelease $version $tag
-  Invoke-LocalAudit
+  # main is clean here, so the README gate was already passed by the push that landed it.
+  Invoke-LocalAudit -ReadmeUnchanged "released from a clean main; reviewed at push time"
   $release = Publish-Tag $tag
   Write-Good "GitHub Release: $($release.html_url)"
   if ($SkipPublish) { Write-Host "Skipped the Marketplace (-SkipPublish)."; exit 0 }

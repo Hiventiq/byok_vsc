@@ -133,6 +133,16 @@ function Assert-ChangelogHasVersion {
   }
 }
 
+# A push carries a reviewed README (hive REQ-ROOT-DOC-001): README.md is in the change, or the
+# pusher attests it was reviewed and nothing needed changing. The script cannot judge content,
+# so the attestation is a human's and is printed so it is visible in the run.
+function Assert-ReadmeReviewed([string]$ReadmeUnchanged) {
+  $changed = @(Invoke-Git @("status", "--porcelain", "--", "README.md"))
+  if ($changed.Count) { Write-Good "README.md is updated in this change"; return }
+  if ($ReadmeUnchanged) { Write-Good "README.md reviewed, nothing to change: $ReadmeUnchanged"; return }
+  throw "README.md is not part of this change. Review it against what you are shipping: update it, or pass -ReadmeUnchanged '<why nothing needs to change>' (REQ-ROOT-DOC-001)."
+}
+
 # Refuses to continue if any file that would be committed looks like it holds a secret or personal data.
 function Assert-NoSecrets {
   $patterns = @(
@@ -154,13 +164,14 @@ function Assert-NoSecrets {
 }
 
 # The same checks CI runs, plus the secret scan: install without scripts, test, build and package.
-function Invoke-LocalAudit {
-  Write-Step "Audit: install without scripts, test, package, scan for secrets"
+function Invoke-LocalAudit([string]$ReadmeUnchanged) {
+  Write-Step "Audit: install without scripts, test, package, scan for secrets, changelog, README"
   Invoke-Npm @("ci", "--ignore-scripts")
   Invoke-Npm @("test")
   Invoke-Npm @("run", "package")
   Assert-NoSecrets
   Assert-ChangelogHasVersion
+  Assert-ReadmeReviewed $ReadmeUnchanged
   Write-Good "audit passed"
 }
 

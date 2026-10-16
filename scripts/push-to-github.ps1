@@ -5,11 +5,15 @@
 #
 # -Trailer  an extra trailer line for the commit, e.g. "Co-Authored-By: Name <email>"
 # -NoMerge  open the pull request and report the checks, but do not merge
+# -ReadmeUnchanged "<why>"  attest that README.md was reviewed against this change and needs
+#           no update. Without it, a change that leaves README.md untouched is refused
+#           (hive REQ-ROOT-DOC-001: a push carries a reviewed README).
 param(
   [Parameter(Mandatory)][string]$Message,
   [string]$Branch,
   [string]$Trailer,
-  [switch]$NoMerge
+  [switch]$NoMerge,
+  [string]$ReadmeUnchanged
 )
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "lib.ps1")
@@ -88,7 +92,7 @@ try {
   if ((Get-CurrentBranch) -ne "main") { throw "Run this from the main branch (currently on '$(Get-CurrentBranch)')." }
   if (-not (Invoke-Git @("status", "--porcelain"))) { Write-Host "Nothing to push: the working tree has no changes."; exit 0 }
 
-  Invoke-LocalAudit
+  Invoke-LocalAudit -ReadmeUnchanged $ReadmeUnchanged
   if (-not $Branch) { $Branch = "update/$(Get-Date -Format 'yyyyMMdd-HHmmss')" }
   Publish-Branch $Branch $Message $Trailer
   $sha = Get-HeadSha
