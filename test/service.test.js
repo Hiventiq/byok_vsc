@@ -11,7 +11,7 @@ const { createClaudeProvider } = require("../src/services/providers/claudeProvid
 
 const NOW = 1_000_000;
 const creds = (token, extra = {}) => ({
-  claudeAiOauth: { accessToken: token, refreshToken: `r-${token}`, expiresAt: NOW + 3_600_000, subscriptionType: "max", ...extra },
+  claudeAiOauth: { accessToken: token, refreshToken: `r-${token}`, expiresAt: NOW + 36_000_000, subscriptionType: "max", ...extra },
 });
 const config = (email) => ({ theme: "dark", oauthAccount: { emailAddress: email, organizationName: `org-${email}` } });
 
@@ -182,4 +182,117 @@ test("backoff follows Retry-After, reports when to retry, and clears afterwards"
   assert.strictEqual(service.nextRetryInMs(), 34000);
   clock += 35000;
   assert.strictEqual(service.nextRetryInMs(), null);
+});
+
+// Two accounts sharing an email: ids are `email` and `email#<short id>`.
+async function twoSameEmail(ctx) {
+  const { service, vault, login, files } = ctx;
+  files.writeCreds(creds("tokP"));
+  files.writeConfig({ oauthAccount: { emailAddress: "s@x.com", organizationUuid: "orgP", organizationName: "P" } });
+  const first = await service.saveCurrent();
+  files.writeCreds(creds("tokQ"));
+  files.writeConfig({ oauthAccount: { emailAddress: "s@x.com", organizationUuid: "orgQ", organizationName: "Q" } });
+  const second = await service.saveCurrent();
+  login("tok1", "live@x.com");
+  await service.saveCurrent();
+  return { first: first.id, second: second.id, vault };
+}
+
+test("a refreshed stashed token is saved under its own id, not the bare email", async () => {
+  const ctx = setup();
+  const { first, second, vault } = await twoSameEmail(ctx);
+  assert.notStrictEqual(first, second);
+  const rec = await vault.get(second);
+  rec.creds.claudeAiOauth.expiresAt = 0;
+  await vault.put(second, rec);
+  await ctx.service.list();
+  assert.strictEqual((await vault.get(second)).creds.claudeAiOauth.accessToken, "refreshed");
+  assert.strictEqual((await vault.get(first)).creds.claudeAiOauth.accessToken, "tokP");
+});
+
+test("a 401 on a not-yet-expired stashed token refreshes once and retries before needing sign-in", async () => {
+  const ctx = setup();
+  ctx.login("tok2", "b@x.com");
+  await ctx.service.saveCurrent();
+  ctx.login("tok1", "a@x.com");
+  await ctx.service.saveCurrent();
+  ctx.api.fetchUsage = async (token) => (token === "tok2"
+    ? { usage_error: "HTTP 401", status: 401, retryAfterMs: 0 }
+    : { usage: { session_pct: 5, weekly_pct: 1 }, status: 200 });
+  const row = (await ctx.service.list()).find((r) => r.email === "b@x.com");
+  assert.strictEqual(row.needs_reauth, false);
+  assert.strictEqual(row.session_pct, 5);
+  assert.strictEqual(ctx.calls.refresh, 1);
+});
+
+test("concurrent lists refresh one expired account only once", async () => {
+  const ctx = setup();
+  ctx.login("tok2", "b@x.com");
+  await ctx.service.saveCurrent();
+  const rec = await ctx.vault.get("b@x.com");
+  rec.creds.claudeAiOauth.expiresAt = 0;
+  await ctx.vault.put("b@x.com", rec);
+  ctx.login("tok1", "a@x.com");
+  await ctx.service.saveCurrent();
+  await Promise.all([ctx.service.list(), ctx.service.list(), ctx.service.list()]);
+  assert.strictEqual(ctx.calls.refresh, 1);
+});
+
+async function stashedB(ctx, expiresAt) {
+  ctx.login("tok2", "b@x.com");
+  await ctx.service.saveCurrent();
+  const rec = await ctx.vault.get("b@x.com");
+  rec.creds.claudeAiOauth.expiresAt = expiresAt;
+  await ctx.vault.put("b@x.com", rec);
+  ctx.login("tok1", "a@x.com");
+  await ctx.service.saveCurrent();
+}
+
+test("a stashed token is renewed an hour before it expires, not after", async () => {
+  const ctx = setup();
+  await stashedB(ctx, NOW + 30 * 60 * 1000);
+  await ctx.service.list();
+  assert.strictEqual(ctx.calls.refresh, 1);
+  assert.strictEqual((await ctx.vault.get("b@x.com")).creds.claudeAiOauth.accessToken, "refreshed");
+});
+
+test("a dead chain is flagged once and not retried until its credentials change", async () => {
+  const ctx = setup();
+  await stashedB(ctx, 0);
+  ctx.api.refresh = async () => { ctx.calls.refresh++; return { error: "HTTP 400", permanent: true }; };
+  const first = (await ctx.service.list()).find((r) => r.email === "b@x.com");
+  await ctx.service.list();
+  assert.strictEqual(first.needs_reauth, true);
+  assert.strictEqual(ctx.calls.refresh, 1);
+  ctx.login("tok2", "b@x.com"); // signed in again and saved: new credentials
+  ctx.files.writeCreds(creds("tok2", { refreshToken: "new-chain" }));
+  await ctx.service.saveCurrent();
+  ctx.login("tok1", "a@x.com");
+  await ctx.service.saveCurrent();
+  assert.strictEqual((await ctx.service.list()).find((r) => r.email === "b@x.com").needs_reauth, false);
+});
+
+test("a rotated token that cannot be written is kept and written next time, never re-spent", async () => {
+  const ctx = setup();
+  await stashedB(ctx, 0);
+  const realPut = ctx.vault.put;
+  let failWrites = true;
+  ctx.vault.put = async (...args) => { if (failWrites) throw new Error("disk"); return realPut(...args); };
+  await ctx.service.list();
+  failWrites = false;
+  await ctx.service.list();
+  assert.strictEqual(ctx.calls.refresh, 1);
+  assert.strictEqual((await ctx.vault.get("b@x.com")).creds.claudeAiOauth.accessToken, "refreshed");
+});
+
+test("a stashed login sharing the live refresh token is never refreshed", async () => {
+  const ctx = setup();
+  ctx.login("tok2", "b@x.com");
+  await ctx.service.saveCurrent();
+  const rec = await ctx.vault.get("b@x.com");
+  rec.creds.claudeAiOauth.expiresAt = 0;
+  await ctx.vault.put("b@x.com", rec);
+  ctx.files.writeCreds(creds("tok2", { expiresAt: 0 })); // live file holds the same chain
+  await ctx.service.list();
+  assert.strictEqual(ctx.calls.refresh, 0);
 });

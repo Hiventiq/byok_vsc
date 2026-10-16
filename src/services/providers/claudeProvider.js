@@ -13,6 +13,8 @@ function createClaudeProvider({ files, api }) {
     accessToken: identity.accessToken,
     subscriptionOf: identity.subscriptionOf,
     isExpired: identity.isExpired,
+    expiresAtOf: (creds) => { const at = identity.oauthOf(creds).expiresAt; return typeof at === "number" ? at : null; },
+    refreshTokenOf: (creds) => identity.oauthOf(creds).refreshToken || "",
 
     async liveIdentity(creds) {
       const snapshot = identity.snapshotFromConfig(files.readConfig());

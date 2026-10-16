@@ -2,7 +2,7 @@
   "name": "hiventiq-byok",
   "displayName": "BYOK",
   "description": "Switch between your Claude Code and Codex accounts from the status bar: live usage bars, auto-switch at a threshold, no service to run. Unofficial.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "hiventiq",
   "license": "Apache-2.0",
   "repository": {
@@ -52,12 +52,12 @@
       "explorer": [
         {
           "id": "hiventiqByok.accounts",
-          "name": "Claude Accounts",
+          "name": "Hiventiq BYOK",
           "when": "config.hiventiqByok.view != panel"
         },
         {
           "id": "hiventiqByok.panel",
-          "name": "Claude Accounts",
+          "name": "Hiventiq BYOK",
           "type": "webview",
           "when": "config.hiventiqByok.view == panel"
         }
@@ -66,42 +66,42 @@
     "commands": [
       {
         "command": "hiventiqByok.switch",
-        "title": "Claude Accounts: Switch Account",
+        "title": "Hiventiq BYOK: Switch Account",
         "icon": "$(arrow-swap)"
       },
       {
         "command": "hiventiqByok.saveCurrent",
-        "title": "Claude Accounts: Save Current Login",
+        "title": "Hiventiq BYOK: Save Current Login",
         "icon": "$(add)"
       },
       {
         "command": "hiventiqByok.refresh",
-        "title": "Claude Accounts: Refresh Usage",
+        "title": "Hiventiq BYOK: Refresh Usage",
         "icon": "$(refresh)"
       },
       {
         "command": "hiventiqByok.remove",
-        "title": "Claude Accounts: Remove Account",
+        "title": "Hiventiq BYOK: Remove Account",
         "icon": "$(trash)"
       },
       {
         "command": "hiventiqByok.rename",
-        "title": "Claude Accounts: Rename (short name)",
+        "title": "Hiventiq BYOK: Rename (short name)",
         "icon": "$(edit)"
       },
       {
         "command": "hiventiqByok.moveUp",
-        "title": "Claude Accounts: Move Up (try earlier)",
+        "title": "Hiventiq BYOK: Move Up (try earlier)",
         "icon": "$(arrow-up)"
       },
       {
         "command": "hiventiqByok.moveDown",
-        "title": "Claude Accounts: Move Down (try later)",
+        "title": "Hiventiq BYOK: Move Down (try later)",
         "icon": "$(arrow-down)"
       },
       {
         "command": "hiventiqByok.chooseStyle",
-        "title": "Claude Accounts: Choose Display Style",
+        "title": "Hiventiq BYOK: Choose Display Style",
         "icon": "$(symbol-color)"
       }
     ],
@@ -167,13 +167,23 @@
       ]
     },
     "configuration": {
-      "title": "Hiventiq Claude Accounts",
+      "title": "Hiventiq BYOK",
       "properties": {
         "hiventiqByok.pollSeconds": {
           "type": "number",
           "default": 120,
           "minimum": 60,
-          "description": "How often usage is re-read (Anthropic rate-limits this endpoint)."
+          "description": "How often usage is re-read, in seconds (default 120, minimum 60). Anthropic rate-limits this endpoint, so a shorter interval can cause HTTP 429. Applies immediately."
+        },
+        "hiventiqByok.shareWithByok": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep saved logins in a folder shared with the Hiventiq byok library on this machine, so both show every account and only one of them refreshes a token (while VS Code is open, this extension does). Off: the extension keeps its logins to itself."
+        },
+        "hiventiqByok.sharedAccountsDir": {
+          "type": "string",
+          "default": "",
+          "description": "The shared folder. Blank means %LOCALAPPDATA%\\Hiventiq\\byok\\accounts (Windows) or ~/.local/share/hiventiq/byok/accounts. Must match byok's BYOK_SHARED_ACCOUNTS_DIR when that is set."
         },
         "hiventiqByok.warnAtPercent": {
           "type": "number",
@@ -183,8 +193,8 @@
         "hiventiqByok.accounts": {
           "type": "array",
           "default": [],
-          "description": "Deprecated: rename and reorder accounts in the Claude Accounts sidebar instead. If this is filled in and the sidebar has no saved preferences yet, it is imported once.",
-          "deprecationMessage": "Use the pencil and arrow icons in the Claude Accounts sidebar instead.",
+          "description": "Deprecated: rename and reorder accounts in the Hiventiq BYOK sidebar instead. If this is filled in and the sidebar has no saved preferences yet, it is imported once.",
+          "deprecationMessage": "Use the pencil and arrow icons in the Hiventiq BYOK sidebar instead.",
           "items": {
             "type": "object",
             "required": [

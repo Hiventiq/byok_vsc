@@ -78,3 +78,12 @@ test("autoSwitch: skips full, dead, unknown and unsaved accounts; respects coold
   assert.strictEqual(decideSwitch({ ...base, accounts: ok }), "good");
   assert.strictEqual(decideSwitch({ ...base, accounts: ok, lastSwitchAt: base.nowMs - 10 }), null);
 });
+
+test("poll interval: seconds to ms, floor of 60, default 120 for blank or invalid", () => {
+  const { pollMs, usageTtlMs } = require("../src/core/poll");
+  assert.strictEqual(pollMs(120), 120000);
+  assert.strictEqual(pollMs(10), 60000);
+  assert.strictEqual(pollMs(undefined), 120000);
+  assert.strictEqual(pollMs("abc"), 120000);
+  assert.ok(usageTtlMs(120) < pollMs(120));
+});

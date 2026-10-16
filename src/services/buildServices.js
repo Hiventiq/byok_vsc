@@ -10,7 +10,7 @@ const { createAccountService } = require("./accountService");
 const { createClaudeProvider } = require("./providers/claudeProvider");
 const { createCodexProvider } = require("./providers/codexProvider");
 
-function buildServices({ home, codexHome, backupDir, secrets, state }) {
+function buildServices({ home, codexHome, backupDir, secrets, state, usageTtlMs, shared = null }) {
   const claude = createClaudeProvider({
     files: createClaudeFiles({ home, backupDir }),
     api: createAnthropicApi(),
@@ -20,11 +20,13 @@ function buildServices({ home, codexHome, backupDir, secrets, state }) {
     api: createOpenaiApi(),
   });
   return [
-    { alwaysShow: true, service: createAccountService({ provider: claude, vault: createVault({ secrets, state }) }) },
+    { alwaysShow: true, service: createAccountService({ provider: claude, usageTtlMs, shared, vault: createVault({ secrets, state }) }) },
     {
       alwaysShow: false,
       service: createAccountService({
         provider: codex,
+        usageTtlMs,
+        shared,
         vault: createVault({
           secrets, state, indexKey: "hiventiqByok.codex.accounts", secretPrefix: "hiventiqByok.codex.account.",
         }),

@@ -28,6 +28,12 @@ function accountIdOf(creds) {
 }
 
 // The access token is a JWT whose `exp` (seconds) says when it dies; unknown means "not expired".
+// When the access token dies (ms since epoch), or null when unreadable.
+function expiresAtOf(creds) {
+  const exp = (decodeJwtPayload(accessToken(creds)) || {}).exp;
+  return typeof exp === "number" ? exp * 1000 : null;
+}
+
 function isExpired(creds, nowMs) {
   const exp = (decodeJwtPayload(accessToken(creds)) || {}).exp;
   return typeof exp === "number" && exp * 1000 - EXPIRY_SKEW_MS <= nowMs;
@@ -41,4 +47,4 @@ function withRefreshed(creds, tokenResponse, nowMs) {
   return { ...creds, tokens, last_refresh: new Date(nowMs).toISOString() };
 }
 
-module.exports = { accessToken, emailOf, subscriptionOf, accountIdOf, isExpired, withRefreshed };
+module.exports = { accessToken, emailOf, subscriptionOf, accountIdOf, expiresAtOf, isExpired, withRefreshed };

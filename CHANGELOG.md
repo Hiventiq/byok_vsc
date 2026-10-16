@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.4.0
+
+- Saved logins are shared with the Hiventiq byok library on the same machine (byok REQ-BYOK-SHR-001). Both tools keep every saved Claude and Codex login in one per-user folder (`%LOCALAPPDATA%\Hiventiq\byok\accounts`, owner-only; `~/.local/share/hiventiq/byok/accounts` elsewhere), so each shows every account, and only one of them refreshes a token at a time: this extension while VS Code is open (it writes a heartbeat on every poll), byok when it is not. A login saved or refreshed in one appears in the other without a new sign-in; removing a login in one removes it in the other. The usage reading is shared the same way: whichever tool fetched last writes it to the login's file, and the other shows it instead of calling (the usage endpoint rate-limits per access token, which both now share), so the sidebar no longer shows `HTTP 429` for an account byok just read. Settings: `hiventiqByok.shareWithByok` (default on) and `hiventiqByok.sharedAccountsDir`. Fixes the "Needs sign-in (HTTP 400)" rows that appeared when byok had refreshed the same login.
+- Saved logins are renewed an hour before they expire (while VS Code is open), one refresh per account at a time; a rotated token is saved before use and never spent twice; a login the vendor rejects for good is not retried until you sign in again; a rejected token that still looked valid is refreshed once and retried before the row says "Needs sign-in".
+- The "Needs sign-in" row now says why (for example `HTTP 400`).
+- `hiventiqByok.pollSeconds` (default 120, minimum 60) now also sets how long a usage reading is reused, and a change applies without a reload.
+- The sidebar and commands are named "Hiventiq BYOK".
+- README: an Install section, a worked example of which account auto-switch picks (and why it returns to the first account once its window resets), a first-run note, and the byok coordination advice as a short callout.
+
 ## 0.3.0
 
 - Choose how usage looks: the new "Choose Display Style" button (paint icon in the Claude Accounts title bar) offers Bars (default), Rings, Rings + badges, and a graphical Panel with gradient bars. The settings behind it are `hiventiqByok.view`, `usageStyle`, `richTooltip` and `labelBadges`.

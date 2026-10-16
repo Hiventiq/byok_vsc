@@ -4,11 +4,13 @@
 // rotation), and stash the live login before switching away from it.
 
 const { shortHash } = require("../core/hash");
+const sharedRules = require("../core/sharedAccounts");
 
-const USAGE_TTL_MS = 4 * 60 * 1000;
+const DEFAULT_USAGE_TTL_MS = 2 * 60 * 1000; // how long a usage reading is reused; the host passes its poll interval
+const RENEW_AHEAD_MS = 60 * 60 * 1000; // renew a stashed token this long before it expires
 const DEFAULT_BACKOFF_MS = 60 * 1000; // used when a 429 carries no Retry-After
 
-function createAccountService({ provider, vault, now = Date.now }) {
+function createAccountService({ provider, vault, now = Date.now, usageTtlMs = () => DEFAULT_USAGE_TTL_MS, shared = null }) {
   const { files } = provider;
   const usageCache = new Map();
   const blockedUntil = new Map();
@@ -54,11 +56,41 @@ function createAccountService({ provider, vault, now = Date.now }) {
     if (!live.email) {
       throw new Error(`Cannot tell which account is signed in to ${provider.label}; sign in again. ${provider.loginHint}`);
     }
-    await vault.put(live.id, {
+    const record = {
       email: live.email, creds: live.creds, snapshot: live.snapshot, discriminator: live.discriminator,
       subscription: provider.subscriptionOf(live.creds),
-    });
+    };
+    await vault.put(live.id, record);
+    publish(live.id, record);
     return { id: live.id, email: live.email };
+  }
+
+  // The shared local store (byok REQ-BYOK-SHR-001): every saved or rotated login is written
+  // there so the byok library shows it and never refreshes a token this extension just rotated.
+  // A failed write never breaks the operation that caused it.
+  function publish(id, record) {
+    if (!shared) return;
+    try {
+      shared.write(provider.id, sharedRules.accountRecord({ provider: provider.id, id, ...record }, now()));
+    } catch { /* the vault copy is still correct; the next write tries again */ }
+  }
+
+  // Take every login from the shared folder that this vault lacks or holds an older rotation of.
+  async function importShared() {
+    if (!shared) return;
+    for (const file of shared.readAll(provider.id)) {
+      const mine = vault.has(file.id) ? await vault.get(file.id) : null;
+      if (sharedRules.isTombstone(file)) {
+        if (mine && sharedRules.tombstoneCovers(file, provider.expiresAtOf(mine.creds))) await vault.remove(file.id);
+        continue;
+      }
+      if (mine && !sharedRules.fileIsNewer(file.creds, mine.creds, provider.expiresAtOf)) continue;
+      await vault.put(file.id, {
+        email: file.account, creds: file.creds, snapshot: file.snapshot, discriminator: file.discriminator,
+        subscription: file.subscription,
+      });
+      dead.delete(file.id);
+    }
   }
 
   // The CLI rotates the live tokens itself; keep the stash in step with them.
@@ -70,12 +102,60 @@ function createAccountService({ provider, vault, now = Date.now }) {
     }
   }
 
-  async function usableCreds(record, isActive) {
-    if (isActive || !provider.isExpired(record.creds, now())) return { creds: record.creds };
+  // Renewal rules, ported from byok (cli_renewal.py): renew a stashed token an hour BEFORE it
+  // expires, one refresh per account at a time (the refresh token is single-use), write the
+  // rotated token before anything else uses it, remember a rotation that could not be written
+  // instead of spending the vendor's one-shot token twice, and make no more calls on a dead chain
+  // until its stored credentials change.
+  const refreshing = new Map();
+  const pending = new Map(); // id -> rotated creds not yet written
+  const dead = new Map(); // id -> refresh-token fingerprint the vendor rejected for good
+
+  const fingerprint = (creds) => shortHash(provider.refreshTokenOf(creds), 12);
+
+  async function persist(id, record, creds) {
+    try {
+      await vault.put(id, { ...record, creds });
+      pending.delete(id);
+      publish(id, { ...record, creds });
+    } catch {
+      pending.set(id, creds); // keep it in memory; the next attempt writes it
+    }
+  }
+
+  async function refreshStored(id) {
+    const record = await vault.get(id);
+    if (!record) return { needsReauth: true, error: "stored credentials missing" };
+    if (pending.has(id)) {
+      await persist(id, record, pending.get(id));
+      return { creds: pending.has(id) ? pending.get(id) : (await vault.get(id)).creds };
+    }
+    if (dead.get(id) === fingerprint(record.creds)) return { creds: record.creds, needsReauth: true, error: "sign-in expired" };
     const out = await provider.refresh(record.creds);
-    if (!out.creds) return { creds: record.creds, needsReauth: out.permanent, error: out.error };
-    await vault.put(record.email, { ...record, creds: out.creds });
+    if (!out.creds) {
+      if (out.permanent) dead.set(id, fingerprint(record.creds));
+      return { creds: record.creds, needsReauth: out.permanent, error: out.error };
+    }
+    dead.delete(id);
+    await persist(id, record, out.creds);
     return { creds: out.creds };
+  }
+
+  function refreshOnce(id) {
+    if (!refreshing.has(id)) {
+      refreshing.set(id, refreshStored(id).finally(() => refreshing.delete(id)));
+    }
+    return refreshing.get(id);
+  }
+
+  // A stashed login whose refresh token equals the live one is the CLI's chain: never refresh it.
+  const sharesLive = (record, live) => Boolean(live) && fingerprint(record.creds) === fingerprint(live.creds)
+    && fingerprint(live.creds) !== "";
+
+  async function usableCreds(id, record, live) {
+    if ((live && live.id === id) || sharesLive(record, live)) return { creds: record.creds };
+    if (!provider.isExpired(record.creds, now() + RENEW_AHEAD_MS)) return { creds: record.creds };
+    return refreshOnce(id);
   }
 
   const usageFields = (result) => ({
@@ -91,19 +171,42 @@ function createAccountService({ provider, vault, now = Date.now }) {
 
   // Cached ~4 min, and after a 429 no call is made until the backoff ends; the last
   // good reading is shown (marked stale) in the meantime, as byok does.
+  // The other tool's reading from the shared folder: fresh enough to stand in for a call, or
+  // any age as a stale fallback. Null when there is none.
+  function sharedReading(id, maxAgeMs) {
+    if (!shared) return null;
+    try {
+      const found = sharedRules.freshUsage(shared.read(provider.id, id), now(), maxAgeMs);
+      return found ? { at: found.at, value: { usage: found.usage, status: 200 } } : null;
+    } catch { return null; }
+  }
+
+  function shareReading(id, usage) {
+    if (!shared) return;
+    try { shared.writeUsage(provider.id, id, usage, now()); } catch { /* best effort */ }
+  }
+
   async function usageFor(id, creds, force) {
     const hit = usageCache.get(id);
-    if (!force && hit && now() - hit.at < USAGE_TTL_MS) return hit.value;
+    if (!force && hit && now() - hit.at < usageTtlMs()) return hit.value;
+    const theirs = sharedReading(id, usageTtlMs());
+    if (!force && theirs) {
+      usageCache.set(id, theirs);
+      return theirs.value;
+    }
     if (now() < (blockedUntil.get(id) || 0)) {
-      return hit ? withStale(hit, "rate limited") : { usage_error: "rate limited, retrying later", status: 429 };
+      const last = hit || sharedReading(id, Infinity);
+      return last ? withStale(last, "rate limited") : { usage_error: "rate limited, retrying later", status: 429 };
     }
     const value = await provider.fetchUsage(creds);
     if (value.usage) {
       usageCache.set(id, { at: now(), value });
+      shareReading(id, value.usage);
       return value;
     }
     if (value.status === 429) blockedUntil.set(id, now() + (value.retryAfterMs || DEFAULT_BACKOFF_MS));
-    return hit && value.status !== 401 ? withStale(hit, value.usage_error) : value;
+    const last = hit || (value.status !== 401 ? sharedReading(id, Infinity) : null);
+    return last && value.status !== 401 ? withStale(last, value.usage_error) : value;
   }
 
   const baseEntry = (id, email, subscription, stored, active, source) => ({
@@ -116,10 +219,19 @@ function createAccountService({ provider, vault, now = Date.now }) {
     const active = Boolean(live && live.id === meta.id);
     const base = baseEntry(meta.id, meta.email, meta.subscription, true, active, record || {});
     if (!record) return { ...base, needs_reauth: true, usage_error: "stored credentials missing" };
-    const ready = await usableCreds(record, active);
+    const ready = await usableCreds(meta.id, record, live);
     if (ready.needsReauth) return { ...base, needs_reauth: true, usage_error: ready.error };
-    const result = await usageFor(meta.id, active ? live.creds : ready.creds, force);
+    let result = await usageFor(meta.id, active ? live.creds : ready.creds, force);
+    if (result.status === 401 && !active) result = await retryAfterRefresh(meta.id, result);
     return { ...base, ...usageFields(result), needs_reauth: result.status === 401 };
+  }
+
+  // A stashed token the server rejects although its clock says valid (revoked or rotated
+  // elsewhere): refresh it once and ask again before calling the account signed out.
+  async function retryAfterRefresh(id, rejected) {
+    const out = await refreshOnce(id);
+    if (out.error) return out.needsReauth ? rejected : { ...rejected, status: 0, usage_error: out.error };
+    return usageFor(id, out.creds, true);
   }
 
   async function liveOnlyEntry(live, force) {
@@ -143,6 +255,8 @@ function createAccountService({ provider, vault, now = Date.now }) {
     nextRetryInMs,
 
     async list({ force = false } = {}) {
+      if (shared) { try { shared.heartbeat(); } catch { /* best effort */ } }
+      await importShared();
       const live = await readLive();
       await syncLive(live);
       const entries = await Promise.all(vault.list().map((m) => entryFor(m, live, force)));
@@ -171,7 +285,15 @@ function createAccountService({ provider, vault, now = Date.now }) {
     },
 
     async remove(id) {
+      const record = await vault.get(id);
       await vault.remove(id);
+      if (shared && record) {
+        try {
+          shared.write(provider.id, sharedRules.tombstone({
+            provider: provider.id, id, email: record.email, expiresAt: provider.expiresAtOf(record.creds),
+          }, now()));
+        } catch { /* best effort */ }
+      }
       usageCache.delete(id);
     },
   };
