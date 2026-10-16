@@ -69,7 +69,8 @@ function windowLine(w, nowMs, withBar) {
 // withBar:false drops the text bar when a ring icon already draws it.
 function usageRows(account, nowMs, { withBar = true } = {}) {
   if (account.needs_reauth) {
-    return [{ text: `Needs sign-in: run \`${LOGIN_COMMAND[account.provider] || "claude login"}\`, then Save Current Login`, pct: null }];
+    const why = account.usage_error ? ` (${account.usage_error})` : "";
+    return [{ text: `Needs sign-in${why}: run \`${LOGIN_COMMAND[account.provider] || "claude login"}\`, then Save Current Login`, pct: null }];
   }
   const windows = usageWindows(account);
   if (!windows.length) {

@@ -13,6 +13,8 @@ function createCodexProvider({ files, api }) {
     accessToken: codexIdentity.accessToken,
     subscriptionOf: codexIdentity.subscriptionOf,
     isExpired: codexIdentity.isExpired,
+    expiresAtOf: codexIdentity.expiresAtOf,
+    refreshTokenOf: (creds) => ((creds && creds.tokens) || {}).refresh_token || "",
 
     // The email is inside the id_token; Codex has no separate identity file to patch.
     liveIdentity: async (creds) => ({ email: codexIdentity.emailOf(creds), snapshot: null }),

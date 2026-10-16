@@ -4,6 +4,9 @@ const os = require("node:os");
 const path = require("node:path");
 const vscode = require("vscode");
 const { buildServices } = require("./services/buildServices");
+const poll = require("./core/poll");
+const sharedRules = require("./core/sharedAccounts");
+const { createSharedStore } = require("./data/sharedStore");
 const { decideSwitch } = require("./core/autoSwitch");
 const labels = require("./core/labels");
 const accountsSetting = require("./core/accountsSetting");
@@ -16,6 +19,7 @@ const styles = require("./core/styles");
 const { createStatusBar } = require("./ui/statusBar");
 
 const settings = () => vscode.workspace.getConfiguration("hiventiqByok");
+const pollMs = () => poll.pollMs(settings().get("pollSeconds"));
 
 async function offerReload(note, label) {
   const choice = await vscode.window.showInformationMessage(`Switched to ${label}. ${note}`, "Reload Window");
@@ -39,6 +43,13 @@ function pickItems(accounts) {
   }));
 }
 
+// The folder shared with the byok library, or null when the setting turns sharing off.
+function sharedStoreFromSettings() {
+  if (settings().get("shareWithByok") === false) return null;
+  const chosen = String(settings().get("sharedAccountsDir") || "").trim();
+  return createSharedStore({ dir: chosen || sharedRules.defaultDir(process.env, process.platform, os.homedir()) });
+}
+
 function activate(context) {
   const runtimes = buildServices({
     home: os.homedir(),
@@ -46,6 +57,8 @@ function activate(context) {
     backupDir: path.join(context.globalStorageUri.fsPath, "backups"),
     secrets: context.secrets,
     state: context.globalState,
+    usageTtlMs: () => poll.usageTtlMs(settings().get("pollSeconds")),
+    shared: sharedStoreFromSettings(),
   }).map(({ service, alwaysShow }, i) => ({
     service,
     provider: service.provider,
@@ -222,10 +235,15 @@ function activate(context) {
     await refresh();
   }
 
-  const timer = setInterval(() => { void refresh(); }, Math.max(60, settings().get("pollSeconds")) * 1000);
+  // The poll interval is a setting; changing it restarts the timer, no reload needed.
+  function startPollTimer() {
+    clearInterval(state.pollTimer);
+    state.pollTimer = setInterval(() => { void refresh(); }, pollMs());
+  }
+  startPollTimer();
   context.subscriptions.push(
     ...runtimes.map((r) => r.statusBar.item),
-    { dispose: () => { clearInterval(timer); clearTimeout(state.retryTimer); } },
+    { dispose: () => { clearInterval(state.pollTimer); clearTimeout(state.retryTimer); } },
     vscode.window.registerTreeDataProvider("hiventiqByok.accounts", tree),
     vscode.window.registerWebviewViewProvider("hiventiqByok.panel", panel),
     vscode.window.registerFileDecorationProvider(decorations),
@@ -238,6 +256,7 @@ function activate(context) {
     vscode.commands.registerCommand("hiventiqByok.moveUp", (node) => moveCommand(node, -1)),
     vscode.commands.registerCommand("hiventiqByok.moveDown", (node) => moveCommand(node, 1)),
     vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("hiventiqByok.pollSeconds")) startPollTimer();
       if (e.affectsConfiguration("hiventiqByok")) void refresh();
     }),
   );
