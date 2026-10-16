@@ -10,6 +10,11 @@ switcher). See `README.md` for what it does and how to release.
   branch and pull request, waits for both test jobs and SonarCloud, and squash-merges only if
   everything is green. If anything is red it stops and leaves the PR open. Add
   `-Trailer "Co-Authored-By: ..."` for the commit trailer.
+  **README first (hive REQ-ROOT-DOC-001):** before running it, read `README.md` against the
+  change. If anything a user sees or sets changed (feature, command, setting, default, install
+  step, limit), update the README in the same change. If nothing needs to change, pass
+  `-ReadmeUnchanged "<why>"`; the audit refuses a push that neither touches `README.md` nor
+  carries that attestation. A release is never cut from a commit that skipped this.
 - **"release to the marketplace"**: `powershell -File scripts\release-to-marketplace.ps1`
   Needs a clean, current, green `main` and a version that is not yet tagged or published. Tags
   `v<version>` (CI builds the GitHub Release), then publishes that exact `.vsix` with `az login`.

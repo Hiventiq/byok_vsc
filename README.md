@@ -163,8 +163,12 @@ Two scripts do the work (PowerShell, Windows). Settings for your machine go in
 `scripts/local.ps1`; copy `scripts/local.example.ps1`.
 
 1. Bump `version` in `package.json` and add a `## <version>` section to `CHANGELOG.md`.
-2. `scripts\push-to-github.ps1 -Message "summary"` audits the change, opens a pull request,
-   waits for the tests (Linux and Windows) and SonarCloud, and merges only if all are green.
+   Read this README against the change and update it if anything a user sees or sets
+   changed; if nothing does, say so with `-ReadmeUnchanged "<why>"` in the next step.
+2. `scripts\push-to-github.ps1 -Message "summary"` audits the change (tests, package, secret
+   scan, changelog section, README reviewed), opens a pull request, waits for the tests
+   (Linux and Windows) and SonarCloud, and merges only if all are green. It refuses a change
+   that leaves `README.md` untouched unless `-ReadmeUnchanged` is given.
 3. `scripts\release-to-marketplace.ps1` checks that `main` is green, tags `v<version>` (the
    **CI and release** workflow builds the GitHub Release), then publishes that exact `.vsix`
    to the Marketplace with your `az login`.
