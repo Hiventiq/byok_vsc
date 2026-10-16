@@ -13,8 +13,11 @@ function restrictToOwner(dir, env, platform) {
     return;
   }
   const user = env.USERNAME;
-  if (!user) return;
-  spawnSync("icacls", [dir, "/inheritance:r", "/grant:r", `${user}:(OI)(CI)F`], { windowsHide: true, timeout: 15000 });
+  const systemRoot = env.SystemRoot || env.SYSTEMROOT;
+  if (!user || !systemRoot) return;
+  // A fixed path, not a PATH lookup, so a writable directory on PATH cannot supply a fake icacls.
+  const icacls = path.join(systemRoot, "System32", "icacls.exe");
+  spawnSync(icacls, [dir, "/inheritance:r", "/grant:r", `${user}:(OI)(CI)F`], { windowsHide: true, timeout: 15000 });
 }
 
 function createSharedStore({ dir, now = Date.now, env = process.env, platform = process.platform, pid = process.pid }) {
