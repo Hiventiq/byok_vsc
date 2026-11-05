@@ -1,7 +1,23 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
+- The status bar hover now matches the tree hover: the same usage bars for every account of
+  that tool, the signed-in one dotted, instead of plain text. It follows the `richTooltip`
+  setting (off gives the old text).
+- macOS: `+` (Save Current Login) never found the Claude login and the Claude group stayed
+  at "No accounts yet", because Claude Code on a Mac keeps its login in the login keychain
+  (item `Claude Code-credentials`), not in `~/.claude/.credentials.json`. The Claude
+  provider now reads that item, writes a switch back into it (secret passed on stdin and
+  read back afterwards), and copies it into the backup folder before a switch; the file is
+  used only when there is no keychain item. Save Current Login also names a tool whose
+  login was not found instead of silently skipping it.
+- README: a Questions section. Why an account can run out before auto-switch fires (the
+  threshold is checked once per poll, so 97 leaves less than one poll of headroom; keep the
+  default 90 or lower for scripts), why a running Claude or Codex session keeps the old login
+  until it restarts, and why a switch can silently do nothing (no eligible account, cooldown,
+  or a stale reading during a 429). Also corrects the auto-switch section, which named
+  `warnAtPercent` as the threshold setting; it is `autoSwitch.thresholdPercent`.
 - `push-to-github.ps1` now refuses a change that leaves `README.md` untouched unless
   `-ReadmeUnchanged "<why>"` attests the README was reviewed and needs nothing (hive
   REQ-ROOT-DOC-001). The release script passes the attestation itself, since it runs on a

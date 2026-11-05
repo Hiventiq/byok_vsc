@@ -46,7 +46,7 @@ function Publish-Tag([string]$Tag) {
 function Get-ReleaseVsix($Release, [string]$Version) {
   $asset = $Release.assets | Where-Object { $_.name -eq "hiventiq-byok-$Version.vsix" } | Select-Object -First 1
   if (-not $asset) { throw "The release has no hiventiq-byok-$Version.vsix asset." }
-  $file = Join-Path $env:TEMP $asset.name
+  $file = Join-Path ([IO.Path]::GetTempPath()) $asset.name
   Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $file -UseBasicParsing
   return $file
 }

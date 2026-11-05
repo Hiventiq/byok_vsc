@@ -20,7 +20,7 @@ $ErrorActionPreference = "Stop"
 
 function New-CommitMessageFile([string]$Text, [string]$TrailerLine) {
   $body = if ($TrailerLine) { "$Text`n`n$TrailerLine`n" } else { "$Text`n" }
-  $file = Join-Path $env:TEMP "byok-commit-$([guid]::NewGuid().ToString('N')).txt"
+  $file = Join-Path ([IO.Path]::GetTempPath()) "byok-commit-$([guid]::NewGuid().ToString('N')).txt"
   [IO.File]::WriteAllText($file, $body, (New-Object Text.UTF8Encoding($false)))
   return $file
 }

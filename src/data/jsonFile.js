@@ -43,4 +43,12 @@ function backupFile(file, dir, nowMs) {
   return target;
 }
 
-module.exports = { readJson, writeJsonAtomic, backupFile };
+function backupData(text, dir, prefix, nowMs) {
+  fs.mkdirSync(dir, { recursive: true });
+  const target = path.join(dir, `${prefix}.${stamp(nowMs)}`);
+  fs.writeFileSync(target, text, { mode: 0o600 });
+  pruneBackups(dir, prefix);
+  return target;
+}
+
+module.exports = { readJson, writeJsonAtomic, backupFile, backupData };
