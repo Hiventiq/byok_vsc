@@ -22,6 +22,15 @@ function emailOfSnapshot(snapshot) {
   return snapshot ? normalizeEmail(snapshot[EMAIL_KEY]) : "";
 }
 
+// The config's oauthAccount block describes the live login only while its email is the one
+// the token resolves to. After a switch to an account saved without a snapshot the block
+// still names the previous account; trusting it then files one account's token under
+// another's name (seen 2026-10-17: a byok row and this vault disagreed on whose token the
+// live file held, and both tools spent each other's single-use refresh tokens).
+function snapshotFor(snapshot, email) {
+  return snapshot && emailOfSnapshot(snapshot) === normalizeEmail(email) ? snapshot : null;
+}
+
 function patchedConfig(config, snapshot) {
   return { ...config, [OAUTH_KEY]: JSON.parse(JSON.stringify(snapshot)) };
 }
@@ -58,6 +67,6 @@ function withRefreshed(creds, tokenResponse, nowMs) {
 }
 
 module.exports = {
-  normalizeEmail, snapshotFromConfig, emailOfSnapshot, patchedConfig,
+  normalizeEmail, snapshotFromConfig, emailOfSnapshot, snapshotFor, patchedConfig,
   accessToken, subscriptionOf, oauthOf, isExpired, withRefreshed,
 };

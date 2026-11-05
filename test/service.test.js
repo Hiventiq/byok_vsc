@@ -71,6 +71,31 @@ test("switchTo swaps credentials and identity, stashes the one it leaves, and ba
   assert.ok(fs.readdirSync(path.join(files.credsPath, "..", "..", "bk")).length >= 1);
 });
 
+test("the live login is named by its token, not by a stale oauthAccount block", async () => {
+  const { service, vault, files, login, api } = setup();
+  login("tok2", "b@x.com"); // the config still names B ...
+  api.fetchProfile = async (token) => ({ email: token === "tok2" ? "A@x.com" : "", status: 200 });
+  const out = await service.saveCurrent(); // ... but the token belongs to A
+  assert.deepStrictEqual(out, { id: "a@x.com", email: "a@x.com" });
+  assert.strictEqual((await vault.get("a@x.com")).creds.claudeAiOauth.accessToken, "tok2");
+  assert.strictEqual((await vault.get("a@x.com")).snapshot, null); // B's block is not A's
+  assert.strictEqual(vault.has("b@x.com"), false);
+  files.writeConfig({ theme: "dark", oauthAccount: { emailAddress: "a@x.com", accountUuid: "u1" } });
+  await service.saveCurrent();
+  assert.strictEqual((await vault.get("a@x.com")).snapshot.accountUuid, "u1"); // a matching block rides along
+});
+
+test("the profile of one token is asked for once, then remembered", async () => {
+  const { service, login, api } = setup();
+  let asked = 0;
+  api.fetchProfile = async () => { asked++; return { email: "a@x.com", status: 200 }; };
+  login("tok1", "a@x.com");
+  await service.saveCurrent();
+  await service.list();
+  await service.list();
+  assert.strictEqual(asked, 1);
+});
+
 test("switchTo the already-live account is a no-op", async () => {
   const { service, login } = setup();
   login("tok1", "a@x.com");

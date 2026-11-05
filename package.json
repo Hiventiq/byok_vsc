@@ -248,7 +248,7 @@
         "hiventiqByok.richTooltip": {
           "type": "boolean",
           "default": true,
-          "description": "Tree only. Hovering an account shows a picture of its usage windows."
+          "description": "Hovering an account (tree) or the status bar item shows a picture of its usage windows."
         },
         "hiventiqByok.labelBadges": {
           "type": "boolean",
