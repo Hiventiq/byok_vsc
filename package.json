@@ -2,7 +2,7 @@
   "name": "hiventiq-byok",
   "displayName": "BYOK",
   "description": "Switch between your Claude Code and Codex accounts from the status bar: live usage bars, auto-switch at a threshold, no service to run. Unofficial.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "hiventiq",
   "license": "Apache-2.0",
   "repository": {

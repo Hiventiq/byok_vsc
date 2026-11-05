@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - The status bar hover now matches the tree hover: the same usage bars for every account of
   that tool, the signed-in one dotted, instead of plain text. It follows the `richTooltip`
