@@ -88,9 +88,15 @@ function staleNote(staleAt, nowMs) {
   return `(last good reading ${Math.max(1, Math.round((nowMs - staleAt) / 60000))}m ago; refresh was rate limited)`;
 }
 
+// The signed-in account is marked by a dot in front of its name (owner ruling 2026-10-17: the
+// dot alone, on the left, no "active" word); the others get the same width of blank.
+function rowLabel(account) {
+  return `${account.active ? "● " : ""}${displayName(account)}`;
+}
+
 function rowDescription(account) {
   // With an alias the label is the alias and the email stays out of the row; without one the label is the email.
-  const parts = [account.active ? "● active" : "", account.subscription, account.stored === false ? "not saved" : ""];
+  const parts = [account.subscription, account.stored === false ? "not saved" : ""];
   return parts.filter(Boolean).join(" · ");
 }
 
@@ -99,7 +105,7 @@ function tooltipText(accounts, nowMs, provider = DEFAULT_PROVIDER) {
     return `No ${provider.label} accounts. Sign in with \`${LOGIN_COMMAND[provider.id]}\`, then save it.`;
   }
   const rows = accounts.map((a) => [
-    `${a.active ? "● " : "  "}${displayName(a)}`,
+    a.active ? rowLabel(a) : `  ${displayName(a)}`,
     ...usageLines(a, nowMs).map((l) => `    ${l}`),
   ].join("\n"));
   return [`${provider.label}`, ...rows].join("\n\n");
@@ -109,4 +115,4 @@ function severity(account, warnAt) {
   return account ? (account.needs_reauth ? "critical" : level(worstUsed(account), warnAt)) : "unknown";
 }
 
-module.exports = { activeOf, displayName, withAliases, statusText, usageWindows, usageRows, usageLines, staleNote, rowDescription, tooltipText, severity };
+module.exports = { activeOf, displayName, withAliases, statusText, usageWindows, usageRows, usageLines, staleNote, rowLabel, rowDescription, tooltipText, severity };

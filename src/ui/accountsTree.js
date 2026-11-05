@@ -56,7 +56,7 @@ class AccountsTree {
   }
 
   _accountNode(account) {
-    const item = new vscode.TreeItem(labels.displayName(account), vscode.TreeItemCollapsibleState.Expanded);
+    const item = new vscode.TreeItem(labels.rowLabel(account), vscode.TreeItemCollapsibleState.Expanded);
     item.description = labels.rowDescription(account);
     item.contextValue = account.stored === false ? "unsaved" : "account";
     item.iconPath = new vscode.ThemeIcon(ICON[labels.severity(account, this.warnAt)]);

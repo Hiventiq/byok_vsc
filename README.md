@@ -30,7 +30,7 @@ usage is drawn:
 - **Rings + badges**: rings plus a coloured percent badge on each account.
 - **Panel**: graphical cards with gradient bars, replacing the tree.
 
-Hovering an account shows a picture of its usage windows. The choice is stored in the
+Hovering an account, or the status bar item, shows a picture of its usage windows (the status bar hover lists every account of that tool, the signed-in one dotted). The choice is stored in the
 `hiventiqByok.view`, `usageStyle`, `richTooltip` and `labelBadges` settings, which you can
 also set by hand. A Claude account whose plan includes Fable also shows a **Fable** weekly
 bar; accounts without it show none.
@@ -44,7 +44,7 @@ auto-switch tries accounts (top first). Right-click a row for the same actions.
 ### Which account auto-switch picks
 
 When the active account's worst usage window reaches the threshold
-(`hiventiqByok.warnAtPercent`), the extension switches to the **first account in your
+(`hiventiqByok.autoSwitch.thresholdPercent`, default 90), the extension switches to the **first account in your
 sidebar order that has room**: saved, not the active one, not needing a sign-in, and
 under the threshold. It checks the list from the top every time; it does not keep a
 "where I was" pointer, so it is not a strict round-robin. A cooldown stops it switching
@@ -68,6 +68,37 @@ If the Hiventiq byok library's own auto-switch is also on, note that it uses a d
 rule (the account with the most room left, needing at least its "min gain"), so keep
 auto-switch on in only one of the two.
 
+### Questions
+
+**Auto-switch was on, but my account ran out before it switched. Why?**
+
+The threshold was too close to the limit for how fast you were using it. The extension
+reads usage every `hiventiqByok.pollSeconds` seconds (default 120, minimum 60, because
+Anthropic rate-limits the usage endpoint) and switches only on a reading at or above the
+threshold. A script or a busy session can go from the low 90s to the limit inside one
+poll, so with a threshold of 97 the first reading over the line often arrives after the
+window is already spent. The switch then happens, but Claude has already refused the
+request. Keep the threshold at the default 90 or lower (85 for script-driven work) so
+there are two or three polls of headroom.
+
+Two more things to check:
+
+- A Claude or Codex session that is already running keeps the login it started with. The
+  switch rewrites the stored login, so only sessions started after it use the new
+  account. A script should start a new session per task, or restart after a switch.
+- The switch runs inside VS Code. If VS Code was closed or asleep while the script ran,
+  nothing could switch. (The Hiventiq byok library's own auto-switch is a separate
+  setting with its own threshold.)
+
+**Auto-switch did nothing and nothing was shown. Why?**
+
+There was no account to switch to, or the cooldown was still running. A target must be
+saved, not marked "Needs sign-in", have a usage reading, and be under the threshold
+itself. After one auto-switch the extension waits `hiventiqByok.autoSwitch.cooldownMinutes`
+(default 30) before another for the same provider. During a usage-endpoint rate limit
+(HTTP 429) the last good reading is reused, marked stale, which can sit under the
+threshold while real usage is past it.
+
 ## Install
 
 From the Marketplace: search for **BYOK** by Hiventiq in the Extensions view, or
@@ -86,7 +117,7 @@ and/or Codex CLI installed and signed in at least once.
 
 1. Sign in the normal way (`claude login` and/or `codex login`), then click `+`
    in the sidebar (**Save Current Login**). It saves the live login of every tool
-   that has one.
+   that has one and names any tool whose login it could not find.
 2. Repeat for each account (sign in as the next one, click `+`).
 3. Click a status bar item, or an account row, to switch.
 
@@ -103,11 +134,15 @@ shows only the windows the account actually has.
 ## How it works
 
 Claude: `~/.claude/.credentials.json` and the `oauthAccount` block of `~/.claude.json`.
-Codex: `~/.codex/auth.json` (or `$CODEX_HOME/auth.json`). Codex must store its login
-in that file (its default); a login kept in the OS keychain is not supported.
+On macOS Claude Code keeps that login in the login keychain instead (item
+`Claude Code-credentials`); the extension reads and writes the item through the
+`security` tool and falls back to the file only when there is no item. Codex:
+`~/.codex/auth.json` (or `$CODEX_HOME/auth.json`). Codex must store its login in that
+file (its default); a Codex login kept in the OS keychain is not supported.
 
 Saved logins are kept in VS Code's SecretStorage (encrypted by your OS). Before every
-switch it backs the files up (newest 10 kept) and saves the login it is leaving. It
+switch it backs the files up (newest 10 kept; a keychain login is copied to a file in
+the same backup folder) and saves the login it is leaving. It
 refreshes only saved accounts' tokens, never the live one: the CLI owns that. Saved
 tokens are renewed an hour before they expire while VS Code is open.
 

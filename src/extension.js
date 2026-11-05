@@ -54,6 +54,8 @@ function activate(context) {
   const runtimes = buildServices({
     home: os.homedir(),
     codexHome: process.env.CODEX_HOME,
+    platform: process.platform,
+    user: os.userInfo().username,
     backupDir: path.join(context.globalStorageUri.fsPath, "backups"),
     secrets: context.secrets,
     state: context.globalState,
@@ -63,7 +65,7 @@ function activate(context) {
     service,
     provider: service.provider,
     alwaysShow,
-    statusBar: createStatusBar({ provider: service.provider, priority: 100 - i, alwaysShow }),
+    statusBar: createStatusBar({ provider: service.provider, priority: 100 - i, alwaysShow, richTooltip: () => settings().get("richTooltip") }),
     accounts: [],
   }));
   const runtimeFor = (providerId) => runtimes.find((r) => r.provider.id === providerId);
@@ -180,18 +182,20 @@ function activate(context) {
     if (picked) await doSwitch(runtimeFor(picked.account.provider), picked.account.id, labels.displayName(picked.account));
   }
 
-  // Saves the live login of every provider that has one.
+  // Saves the live login of every provider that has one, and names the ones that had none.
   async function saveCommand() {
     const saved = [];
+    const skipped = [];
     const problems = [];
     for (const runtime of runtimes) {
       try {
         saved.push(`${runtime.provider.label}: ${(await runtime.service.saveCurrent()).email}`);
       } catch (err) {
-        if (err.code !== "no_login") problems.push(err.message);
+        if (err.code === "no_login") skipped.push(`${runtime.provider.label}: no login found. ${runtime.provider.loginHint}`);
+        else problems.push(err.message);
       }
     }
-    if (saved.length) vscode.window.showInformationMessage(`Saved ${saved.join(", ")}.`);
+    if (saved.length) vscode.window.showInformationMessage([`Saved ${saved.join(", ")}.`, ...skipped].join(" "));
     if (problems.length) vscode.window.showErrorMessage(problems.join(" "));
     if (!saved.length && !problems.length) {
       vscode.window.showErrorMessage("No Claude or Codex login found. Sign in with `claude login` or `codex login` first.");

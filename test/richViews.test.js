@@ -4,7 +4,7 @@ const assert = require("node:assert");
 const { parseUsage } = require("../src/core/usageParse");
 const labels = require("../src/core/labels");
 const { ringSvg, barsSvg, dataUri } = require("../src/core/svg");
-const { tooltipMarkdown, panelBody } = require("../src/core/richViews");
+const { tooltipMarkdown, statusTooltipMarkdown, panelBody } = require("../src/core/richViews");
 const { panelPage } = require("../src/core/panelPage");
 const { escapeHtml, escapeMarkdown } = require("../src/core/html");
 const { PRESETS, currentPreset } = require("../src/core/styles");
@@ -60,6 +60,15 @@ test("tooltip embeds the picture and escapes the name", () => {
   assert.match(md, /^\*\*A\\\*B \\\[x\\\]\*\*/);
   assert.match(md, /!\[usage\]\(data:image\/svg\+xml;base64,/);
   assert.match(tooltipMarkdown({ ...base, needs_reauth: true }, 0, 80), /Needs sign\\-in/);
+});
+
+test("status tooltip sections every account and dots the active one", () => {
+  const md = statusTooltipMarkdown([{ ...base, active: true, name: "SC" }, { ...base, id: "b", name: "Kaper", active: false }], 0, 80, { id: "claude", label: "Claude" });
+  assert.match(md, /^\*\*Claude\*\*/);
+  assert.match(md, /● \*\*SC\*\*/);
+  assert.doesNotMatch(md, /● \*\*Kaper/);
+  assert.equal(md.split("---").length, 3);
+  assert.match(statusTooltipMarkdown([], 0, 80, { id: "claude-code", label: "Claude" }), /claude login/);
 });
 
 test("panel cards escape text, wire buttons by id, and hide switch on the active account", () => {

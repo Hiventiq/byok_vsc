@@ -1,7 +1,9 @@
 "use strict";
 // Composition: one account service per provider, each with its own vault namespace.
 // Claude keeps the original vault names so accounts saved before Codex existed still load.
+const { execFileSync } = require("node:child_process");
 const { createClaudeFiles } = require("../data/claudeFiles");
+const { createClaudeKeychain } = require("../data/claudeKeychain");
 const { createCodexFiles } = require("../data/codexFiles");
 const { createAnthropicApi } = require("../data/anthropicApi");
 const { createOpenaiApi } = require("../data/openaiApi");
@@ -10,9 +12,9 @@ const { createAccountService } = require("./accountService");
 const { createClaudeProvider } = require("./providers/claudeProvider");
 const { createCodexProvider } = require("./providers/codexProvider");
 
-function buildServices({ home, codexHome, backupDir, secrets, state, usageTtlMs, shared = null }) {
+function buildServices({ home, codexHome, backupDir, secrets, state, usageTtlMs, shared = null, platform = "", user = "" }) {
   const claude = createClaudeProvider({
-    files: createClaudeFiles({ home, backupDir }),
+    files: createClaudeFiles({ home, backupDir, keychain: createClaudeKeychain({ platform, user, execFile: execFileSync }) }),
     api: createAnthropicApi(),
   });
   const codex = createCodexProvider({

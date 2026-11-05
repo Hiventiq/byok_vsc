@@ -12,8 +12,10 @@ function reset(w, nowMs) {
 }
 
 // Hover for an account row: a picture of every window, then any notes.
-function tooltipMarkdown(account, nowMs, warnAt) {
-  const head = `**${escapeMarkdown(labels.displayName(account))}**${account.subscription ? ` · ${escapeMarkdown(account.subscription)}` : ""}`;
+// `marked` puts the signed-in dot in front of the name (the status bar lists several accounts).
+function tooltipMarkdown(account, nowMs, warnAt, { marked = false } = {}) {
+  const dot = marked && account.active ? "● " : "";
+  const head = `${dot}**${escapeMarkdown(labels.displayName(account))}**${account.subscription ? ` · ${escapeMarkdown(account.subscription)}` : ""}`;
   const windows = labels.usageWindows(account);
   if (!windows.length) return `${head}\n\n${escapeMarkdown(labels.usageLines(account, nowMs)[0])}`;
   const rows = windows.map((w) => ({
@@ -21,6 +23,13 @@ function tooltipMarkdown(account, nowMs, warnAt) {
   }));
   const stale = account.stale_at ? `\n\n${escapeMarkdown(labels.staleNote(account.stale_at, nowMs))}` : "";
   return `${head}\n\n![usage](${dataUri(barsSvg(rows))})${stale}`;
+}
+
+// Status bar hover: one section per account of a provider, the signed-in one dotted.
+function statusTooltipMarkdown(accounts, nowMs, warnAt, provider) {
+  if (!accounts.length) return labels.tooltipText(accounts, nowMs, provider);
+  const sections = accounts.map((a) => tooltipMarkdown(a, nowMs, warnAt, { marked: true }));
+  return [`**${escapeMarkdown(provider.label)}**`, ...sections].join("\n\n---\n\n");
 }
 
 function windowHtml(w, nowMs, warnAt) {
@@ -49,10 +58,10 @@ function cardHtml(account, nowMs, warnAt) {
   const body = windows.length
     ? windows.map((w) => windowHtml(w, nowMs, warnAt)).join("")
     : `<div class="foot">${escapeHtml(labels.usageLines(account, nowMs)[0])}</div>`;
-  const sub = [account.active ? "● active" : "", account.subscription].filter(Boolean).join(" · ");
+  const sub = account.subscription || "";
   const lvl = labels.severity(account, warnAt);
   return `<div class="card${account.active ? " active" : ""}" style="border-left-color:${colorOf(lvl)}">`
-    + `<div class="head"><b>${escapeHtml(labels.displayName(account))}</b><span class="sub">${escapeHtml(sub)}</span><span class="btns">${buttonsHtml(account)}</span></div>${body}</div>`;
+    + `<div class="head"><b>${escapeHtml(labels.rowLabel(account))}</b><span class="sub">${escapeHtml(sub)}</span><span class="btns">${buttonsHtml(account)}</span></div>${body}</div>`;
 }
 
 // groups: [{ provider: { label }, accounts, alwaysShow }]
@@ -63,4 +72,4 @@ function panelBody(groups, nowMs, warnAt) {
     g.accounts.length ? g.accounts.map((a) => cardHtml(a, nowMs, warnAt)).join("") : `<p class="foot">No accounts yet.</p>`}`).join("");
 }
 
-module.exports = { tooltipMarkdown, panelBody };
+module.exports = { tooltipMarkdown, statusTooltipMarkdown, panelBody };

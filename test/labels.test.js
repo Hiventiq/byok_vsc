@@ -27,7 +27,9 @@ test("severity and rowDescription", () => {
   assert.strictEqual(labels.severity(a, 80), "ok");
   assert.strictEqual(labels.severity({ ...a, weekly_pct: 85 }, 80), "warn");
   assert.strictEqual(labels.severity({ ...a, needs_reauth: true }, 80), "critical");
-  assert.strictEqual(labels.rowDescription({ ...a, stored: false }), "● active · max · not saved");
+  assert.strictEqual(labels.rowDescription({ ...a, stored: false }), "max · not saved");
+  assert.strictEqual(labels.rowLabel(a), "● a@x.com");
+  assert.strictEqual(labels.rowLabel({ ...a, active: false }), "a@x.com");
 });
 
 test("tooltipText lists every account", () => {
