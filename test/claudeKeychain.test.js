@@ -102,7 +102,8 @@ test("claudeFiles: the keychain login wins over the file, writes go back to it, 
   const kept = copies.find((p) => path.basename(p).startsWith("credentials.keychain."));
   assert.ok(kept);
   assert.deepStrictEqual(JSON.parse(fs.readFileSync(kept, "utf8")), creds("tok2"));
-  assert.strictEqual(fs.statSync(kept).mode & 0o777, 0o600);
+  // Windows has no Unix permission bits (it reports 0o666), so the mode is only checked elsewhere.
+  if (process.platform !== "win32") assert.strictEqual(fs.statSync(kept).mode & 0o777, 0o600);
 });
 
 test("claude service on macOS: save and switch go through the keychain", async () => {
