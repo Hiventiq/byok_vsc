@@ -64,6 +64,8 @@ wiring only. Business logic and pure helpers are never mixed in one function. Te
 
 ## Releasing
 
+**On the Mac, follow `docs/releasing-on-mac.md`** (setup, the exact commands, and every gotcha hit so far).
+
 See "Releasing" in `README.md`. Bump `version` and add a `## <version>` section to
 `CHANGELOG.md`; the version tag, `package.json` and the changelog must agree.
 
