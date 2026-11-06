@@ -194,6 +194,8 @@ files/API modules.
 
 ## Releasing
 
+On macOS, see [docs/releasing-on-mac.md](docs/releasing-on-mac.md) for the step-by-step runbook.
+
 Two scripts do the work (PowerShell, Windows). Settings for your machine go in
 `scripts/local.ps1`; copy `scripts/local.example.ps1`.
 
